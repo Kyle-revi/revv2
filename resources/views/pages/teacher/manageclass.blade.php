@@ -354,48 +354,70 @@ window.openModulesDrawer = function(classId, className) {
 
 
 
-    /* -”€-”€ Student list items -”€-”€ */
-
+    /* ── Student list items ── */
     .rv-student-item {
-
-        display: flex; align-items: center; justify-content: space-between;
-
-        padding: 10px 0; border-bottom: 1px solid #f7f7f7;
-
-        font-size: 17px; color: #333;
-
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f7f7f7;
+        font-size: 17px;
+        color: #333;
+        gap: 10px;
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
     }
-
     .rv-student-item:last-child { border-bottom: none; }
 
-
-
-    /* -”€-”€ Module list items -”€-”€ */
-
+    /* ── Module list items ── */
     .rv-module-item {
-
-        display: flex; align-items: flex-start; justify-content: space-between;
-
-        padding: 12px 0; border-bottom: 1px solid #f7f7f7; gap: 10px;
-
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f7f7f7;
+        gap: 12px;
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
     }
-
     .rv-module-item:last-child { border-bottom: none; }
-
-    .rv-module-title { font-size: 18px; font-weight: 500; color: #111; margin-bottom: 2px; }
-
-    .rv-module-meta { font-size: 17px; color: #bbb; }
-
-    .rv-module-type {
-
-        font-size: 17px; font-weight: 500; padding: 2px 7px;
-
-        border-radius: 99px; white-space: nowrap; flex-shrink: 0;
-
+    .rv-module-title {
+        font-size: 17px;
+        font-weight: 500;
+        color: #111;
+        margin-bottom: 4px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        word-wrap: break-word;
+        line-height: 1.35;
     }
-
+    .rv-module-meta {
+        font-size: 14px;
+        color: #888;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        word-wrap: break-word;
+        line-height: 1.35;
+    }
+    .rv-module-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .rv-module-type {
+        font-size: 14px;
+        font-weight: 500;
+        padding: 2px 7px;
+        border-radius: 99px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
     .rv-module-type.doc { background: #e6f1fb; color: #185fa5; }
-
     .rv-module-type.quiz { background: #eeedfe; color: #3c3489; }
 
 
@@ -1347,27 +1369,20 @@ window.openModulesDrawer = function(classId, className) {
     /* -”€-”€ Native dialog panels -”€-”€ */
 
     dialog.rv-dialog {
-
         padding: 0;
-
         border: none;
-
         border-radius: 0;
-
         margin: 0 0 0 auto;
-
-        width: 420px;
-
+        width: 460px;
         max-width: 95vw;
-
         height: 100vh;
-
         max-height: 100vh;
-
         background: transparent;
-
         outline: none;
+    }
 
+    #dialogModules {
+        width: 500px;
     }
 
 
@@ -2115,19 +2130,12 @@ function loadCurrentStudents() {
 
 
         const html = data.students.map(s => `
-
             <div class="rv-student-item" data-student-id="${s.id}">
-
-                <span>${s.text}${programLabel(s.program)}</span>
-
-                <button class="rv-btn rv-btn-danger" style="height:28px;padding:0 10px;font-size: 16px;" onclick="removeStudent(this, ${s.id})">
-
+                <span style="flex:1;min-width:0;overflow-wrap:anywhere;word-break:break-word;">${s.text}${programLabel(s.program)}</span>
+                <button class="rv-btn rv-btn-danger" style="height:28px;padding:0 10px;font-size: 14px;flex-shrink:0;" onclick="removeStudent(this, ${s.id})">
                     Remove
-
                 </button>
-
             </div>
-
         `).join('');
 
 
@@ -2303,16 +2311,16 @@ function loadModulesForTab(classId, type, containerId) {
             }
 
             html += '<div class="rv-module-item">' +
-                '<div style="flex:1;">' +
+                '<div style="flex:1;min-width:0;">' +
                     '<div class="rv-module-title">' + m.title + ' ' + badge + ' ' + statusBadge + '</div>' +
                     '<div class="rv-module-meta">' + m.created_at + dateMeta + '</div>' +
                 '</div>' +
-                '<div style="display:flex;align-items:center;gap:6px;">' +
+                '<div class="rv-module-actions" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
                     toggleStatusBtn +
                     editBtn +
                     duplicateBtn +
                     viewBtn +
-                    '<button class="rv-btn rv-btn-danger" style="height:28px;padding:0 10px;font-size:16px;" onclick="deleteModuleFromTab(' + m.id + ', \'' + type + '\', \'' + containerId + '\')">' +
+                    '<button class="rv-btn rv-btn-danger" style="height:28px;padding:0 10px;font-size:16px;flex-shrink:0;" title="Delete" onclick="deleteModuleFromTab(' + m.id + ', \'' + type + '\', \'' + containerId + '\')">' +
                         '<i class="fas fa-trash"></i>' +
                     '</button>' +
                 '</div>' +
@@ -2422,35 +2430,20 @@ function loadClassAnnouncements(classId) {
 
 
             return `
-
                 <div style="border:1px solid #f1f1f1;border-radius:8px;padding:10px;margin-bottom:8px;${a.is_pinned ? 'background:#fffaf0;border-color:#f2d17f;' : ''}">
-
-                    <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:5px;">
-
-                        <div style="font-size: 16px;color:#888;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-
+                    <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:5px;align-items:flex-start;">
+                        <div style="font-size: 14px;color:#888;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;min-width:0;">
                             ${pinned}
-
-                            <span>${a.author}</span>
-
+                            <span style="font-weight:600;color:#333;">${a.author}</span>
                             <span>${a.created_human ?? ''}</span>
-
                         </div>
-
-                        <div style="display:flex;gap:6px;align-items:center;">
-
+                        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
                             ${edit}
-
                             ${del}
-
                         </div>
-
                     </div>
-
-                    <div style="font-size: 16px;color:#222;white-space:pre-wrap;">${$('<div/>').text(a.message).html()}</div>
-
+                    <div style="font-size: 15px;color:#222;overflow-wrap:anywhere;word-break:break-word;line-height:1.45;">${$('<div/>').text(a.message).html()}</div>
                 </div>
-
             `;
 
         }).join('');

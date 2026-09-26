@@ -214,11 +214,11 @@
         .rv-module-item, .rv-student-item {
             display: flex; align-items: center; justify-content: space-between;
             padding: 13px 16px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 11px;
-            background: #f8fafc;
+            background: #f8fafc; gap: 12px; min-width: 0; width: 100%; box-sizing: border-box;
         }
-        .rv-module-title  { font-size: 16px; font-weight: 500; color: #1e293b; }
-        .rv-module-meta   { font-size: 14px; color: #94a3b8; margin-top: 4px; }
-        .rv-module-type   { font-size: 14px; font-weight: 500; padding: 4px 10px; border-radius: 99px; }
+        .rv-module-title  { font-size: 16px; font-weight: 500; color: #1e293b; overflow-wrap: anywhere; word-break: break-word; line-height: 1.35; }
+        .rv-module-meta   { font-size: 14px; color: #94a3b8; margin-top: 4px; overflow-wrap: anywhere; word-break: break-word; line-height: 1.35; }
+        .rv-module-type   { font-size: 14px; font-weight: 500; padding: 4px 10px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
         .rv-module-type.quiz { background: #dcfce7; color: #166534; }
         .rv-module-type.doc  { background: #dbeafe; color: #1d4ed8; }
 
