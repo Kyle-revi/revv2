@@ -193,4 +193,45 @@ class CloudflareAI
 
         return $result['response'] ?? 'No AI summary available.';
     }
+
+    public function generateStudentAssessmentAnalysis(array $stats, array $options = []): string
+    {
+        $weakSummary = collect($stats['weakTopics'] ?? [])
+            ->filter(fn ($t) => ($t['pct_correct'] ?? 100) < 100)
+            ->map(fn ($t) => is_array($t)
+                ? ($t['question'] ?? $t['topic'] ?? '').' ('.($t['pct_correct'] ?? 0).'% correct)'
+                : (string) $t
+            )
+            ->filter()
+            ->implode("\n- ");
+
+        if (empty($weakSummary)) {
+            $weakSummary = 'No weak questions detected. Student scored well across all questions.';
+        } else {
+            $weakSummary = '- '.$weakSummary;
+        }
+
+        $settingsResolver = app(AiSettingsResolver::class);
+        $systemPrompt = (string) ($options['system_prompt'] ?? "You are an educational tutor analyzing an individual student's formal assessment performance. Reply in this exact clean format with clear line breaks:\n\nStudent Performance: [1-2 sentences evaluating student score vs class average]\nAssessment Status: [Passed / Needs Improvement / Failed]\nWeak Areas:\n[bullet list of questions or topics the student struggled with]\nRecommendation: [1-2 actionable study recommendations for the student]");
+
+        $userPrompt = "Student: {$stats['student']}\nClass: {$stats['class']}\nStudent Average: {$stats['averageScore']}%\nClass Average: {$stats['classAverage']}%\nPassed Attempts: {$stats['passedCount']}/{$stats['totalAttempts']}\n\nQuestions Needing Review:\n{$weakSummary}";
+
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => $systemPrompt,
+            ],
+            [
+                'role' => 'user',
+                'content' => $userPrompt,
+            ],
+        ];
+
+        $result = $this->run($settingsResolver->getModel(), [
+            'messages' => $messages,
+            'max_tokens' => $settingsResolver->getMaxTokens(),
+        ]);
+
+        return $result['response'] ?? 'No AI analysis available.';
+    }
 }

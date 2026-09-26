@@ -1212,6 +1212,7 @@ function parseAI(text) {
     var t = document.createElement('textarea');
     t.innerHTML = text || '';
     text = t.value;
+    text = text.replace(/\\n/g, '\n');
     text = text.replace(/<[^>]+>/g, '');
     text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');

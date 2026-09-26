@@ -639,9 +639,16 @@ class PerformanceController extends Controller
                 ->orderBy('pct_correct', 'asc')
                 ->get();
 
-            $aiAnalysis = app(CloudflareAI::class)->generateSummary([
+            $classAverage = QuizAttempt::whereHas('module', function ($q) use ($class) {
+                $q->where('class_id', $class->id)
+                    ->where('is_formal_assessment', true);
+            })->avg('percentage') ?? 0;
+
+            $aiAnalysis = app(CloudflareAI::class)->generateStudentAssessmentAnalysis([
                 'student' => $student->name,
+                'class' => $class->name,
                 'averageScore' => round($attempts->avg('percentage'), 1),
+                'classAverage' => round($classAverage, 1),
                 'bestScore' => round($attempts->max('percentage'), 1),
                 'passedCount' => $attempts->where('passed', true)->count(),
                 'totalAttempts' => $attempts->count(),
