@@ -531,10 +531,11 @@
                 $isPostTest = ($module->quiz_stage === 'post_test')
                     || in_array($module->assessment_purpose, ['post_test', 'post_assessment'])
                     || preg_match('/post[- ]?(test|assessment)|final assessment/i', (string) $module->title);
+                $isQuizOrAssessment = (bool) ($module->is_quiz || $module->is_formal_assessment || $isPreTest || $isPostTest);
             @endphp
               <div class="mod-item {{ $isLocked ? 'locked' : '' }} {{ $module->is_lecture ? 'lecture-item' : '' }}"
                  data-module-id="{{ $module->id }}"
-                 data-is-quiz="{{ $module->is_quiz ? '1' : '0' }}"
+                 data-is-quiz="{{ $isQuizOrAssessment ? '1' : '0' }}"
                  data-locked="{{ $isLocked ? '1' : '0' }}">
                 <div class="mod-item-row">
                     @if($module->is_lecture && $module->subparts->isNotEmpty())
@@ -548,7 +549,7 @@
                             $av = $availabilityInfo[$module->id] ?? null;
                             $isLockedByAssessment = $av['is_locked_by_assessment'] ?? false;
                             $lockTitle = $isLockedByAssessment
-                                ? 'Locked: Formal Assessment in progress'
+                                ? "Locked: " . ($activeAssessmentLabel ?? 'Assessment') . " in progress"
                                 : (($av['is_upcoming'] ?? false)
                                     ? 'Opens on ' . ($av['available_at'] ?? 'scheduled date')
                                     : (($av['is_closed'] ?? false) ? 'Closed / Past Due' : 'Locked'));
@@ -619,9 +620,9 @@
 {{-- Main --}}
 <div class="mod-main">
     @if($hasActiveAssessment ?? false)
-        <div style="background: #fffbeb; border-bottom: 1px solid #fef3c7; padding: 10px 18px; display: flex; align-items: center; gap: 10px; color: #92400e; font-size: 13.5px; font-family: 'DM Sans', sans-serif;">
+        <div id="assessmentLockBanner" style="background: #fffbeb; border-bottom: 1px solid #fef3c7; padding: 10px 18px; display: flex; align-items: center; gap: 10px; color: #92400e; font-size: 13.5px; font-family: 'DM Sans', sans-serif;">
             <i class="fas fa-lock" style="color: #d97706; font-size: 14px;"></i>
-            <span><strong>Formal Assessment in Progress:</strong> Lecture modules are temporarily locked while you are taking an assessment. Submit your assessment to unlock your lessons.</span>
+            <span><strong id="assessmentBannerTitle">{{ $activeAssessmentLabel ?? 'Formal Assessment' }} in Progress:</strong> Lecture modules are temporarily locked while you are taking an assessment. Submit your assessment to unlock your lessons.</span>
         </div>
     @endif
     <div class="mod-content" id="modContent">
@@ -946,6 +947,17 @@
         const active = items.findIndex(el => $(el).hasClass('active'));
         const next   = active + dir;
         if (next >= 0 && next < items.length) $(items[next]).trigger('click');
+    function isQuizModule(mod) {
+        if (!mod) return false;
+        return Boolean(
+            mod.is_quiz ||
+            mod.is_formal_assessment ||
+            mod.quiz_stage === 'pre_test' ||
+            mod.quiz_stage === 'post_test' ||
+            mod.assessment_purpose === 'pre_test' ||
+            mod.assessment_purpose === 'post_test' ||
+            /pre[- ]?(test|assessment)|post[- ]?(test|assessment)|final assessment/i.test(mod.title || '')
+        );
     }
 
     /**
@@ -957,7 +969,7 @@
      * pre-test → content → post-test tab flow.
      */
     function isLectureModule(mod, isQuiz) {
-        return !isQuiz && Boolean(mod.is_lecture);
+        return !isQuiz && Boolean(mod && mod.is_lecture && mod.subparts && mod.subparts.length > 0);
     }
 
     function loadModule(moduleId, isQuiz) {
@@ -968,12 +980,14 @@
         const mod = modules.find(m => m.id == moduleId);
         if (!mod) return;
 
-        if (isLectureModule(mod, isQuiz)) {
+        const effectiveIsQuiz = Boolean(isQuiz || isQuizModule(mod));
+
+        if (isLectureModule(mod, effectiveIsQuiz)) {
             loadLectureModule(mod);
             return;
         }
 
-        if (isQuiz) {
+        if (effectiveIsQuiz) {
             quizRenderTarget = '#modContent';
             currentQuizStage = mod.quiz_stage || null;
             quizBackHandler = backToModuleList;
@@ -1672,7 +1686,7 @@
 
     function beginQuizFlow(moduleId) {
         const mod = modules.find(m => m.id == moduleId);
-        isFormalAssessment = mod?.is_formal_assessment ?? false;
+        isFormalAssessment = Boolean(mod?.is_formal_assessment || mod?.quiz_stage || mod?.assessment_purpose);
 
         const startPayload = { _token: '{{ csrf_token() }}' };
         if (currentQuizStage) {
@@ -1690,8 +1704,36 @@
                     broadcastAssessmentEvent('assessment_started');
                     startAntiCheat();
                     hasActiveAssessment = true;
+
+                    let label = 'Formal Assessment';
+                    if (mod?.mock_board_id) {
+                        label = 'Mock Board Exam';
+                    } else if (mod?.is_formal_assessment) {
+                        label = 'Formal Assessment';
+                    } else if (mod?.quiz_stage === 'pre_test' || mod?.assessment_purpose === 'pre_test' || /pre[- ]?(test|assessment)/i.test(mod?.title || '')) {
+                        label = 'Pre-Test';
+                    } else if (mod?.quiz_stage === 'post_test' || mod?.assessment_purpose === 'post_test' || /post[- ]?(test|assessment)|final assessment/i.test(mod?.title || '')) {
+                        label = 'Post-Test';
+                    } else {
+                        label = 'Assessment';
+                    }
+
+                    let banner = document.getElementById('assessmentLockBanner');
+                    if (!banner) {
+                        const bannerHtml = `
+                            <div id="assessmentLockBanner" style="background: #fffbeb; border-bottom: 1px solid #fef3c7; padding: 10px 18px; display: flex; align-items: center; gap: 10px; color: #92400e; font-size: 13.5px; font-family: 'DM Sans', sans-serif;">
+                                <i class="fas fa-lock" style="color: #d97706; font-size: 14px;"></i>
+                                <span><strong id="assessmentBannerTitle">${label} in Progress:</strong> Lecture modules are temporarily locked while you are taking an assessment. Submit your assessment to unlock your lessons.</span>
+                            </div>
+                        `;
+                        $('.mod-main').prepend(bannerHtml);
+                    } else {
+                        $('#assessmentBannerTitle').text(`${label} in Progress:`);
+                        $(banner).show();
+                    }
+
                     modules.forEach(m => {
-                        if (!m.is_formal_assessment && !m.is_quiz) {
+                        if (!m.is_formal_assessment && !m.is_quiz && !m.quiz_stage) {
                             lockedModules[m.id] = true;
                             const el = document.querySelector(`.mod-item[data-module-id="${m.id}"]`);
                             if (el) {
@@ -1705,7 +1747,7 @@
                 const questionParams = currentQuizStage ? { quiz_stage: currentQuizStage } : {};
 
                 $.get(`/modules/${moduleId}/quiz/questions`, questionParams, function (res) {
-                    if (res.success) {
+                    if (res.success && res.questions && res.questions.length > 0) {
                         currentQuizQuestions = res.questions;
                         currentQIndex        = 0;
                         answeredQuestions    = new Set();
@@ -1713,7 +1755,29 @@
                         renderNav();
                         renderQ();
                         startTimer(parseInt(res.time_limit) || 0);
+                    } else {
+                        const msg = res?.message || 'No questions found for this assessment.';
+                        $(quizRenderTarget).html(`
+                            <div class="mod-placeholder">
+                                <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:#f59e0b;"></i>
+                                <p style="margin-top:12px;color:#444;max-width:420px;">${msg}</p>
+                                <button class="qz-btn qz-btn-outline" style="margin-top:12px;" onclick="quizBackHandler()">
+                                    <i class="fas fa-arrow-left"></i> Back
+                                </button>
+                            </div>
+                        `);
                     }
+                }).fail(function (xhr) {
+                    const message = xhr?.responseJSON?.message || 'Failed to load questions for this assessment.';
+                    $(quizRenderTarget).html(`
+                        <div class="mod-placeholder">
+                            <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:#e24b4a;"></i>
+                            <p style="margin-top:12px;color:#444;max-width:420px;">${message}</p>
+                            <button class="qz-btn qz-btn-outline" style="margin-top:12px;" onclick="quizBackHandler()">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                        </div>
+                    `);
                 });
             })
             .fail(function (xhr) {
@@ -1862,6 +1926,7 @@
                 if (isFormalAssessment) {
                     broadcastAssessmentEvent('assessment_ended');
                     hasActiveAssessment = false;
+                    $('#assessmentLockBanner').remove();
                     modules.forEach(m => {
                         const av = availabilityMap[m.id] || {};
                         if (!av.is_upcoming && !av.is_closed && !av.is_inactive) {
@@ -1881,6 +1946,7 @@
                 if (isFormalAssessment) {
                     broadcastAssessmentEvent('assessment_ended');
                     hasActiveAssessment = false;
+                    $('#assessmentLockBanner').remove();
                     modules.forEach(m => {
                         const av = availabilityMap[m.id] || {};
                         if (!av.is_upcoming && !av.is_closed && !av.is_inactive) {

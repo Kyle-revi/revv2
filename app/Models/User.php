@@ -113,11 +113,21 @@ class User extends Authenticatable
      */
     public function hasActiveFormalAssessment(?int $classId = null): bool
     {
+        return $this->getActiveFormalAssessment($classId) !== null;
+    }
+
+    /**
+     * Get the active in-progress assessment attempt if any.
+     */
+    public function getActiveFormalAssessment(?int $classId = null): ?QuizAttempt
+    {
         $query = $this->quizAttempts()
             ->where('status', 'in_progress')
             ->where(function ($q) {
                 $q->whereHas('module', function ($m) {
-                    $m->where('is_formal_assessment', true);
+                    $m->where('is_formal_assessment', true)
+                        ->orWhereIn('quiz_stage', ['pre_test', 'post_test'])
+                        ->orWhereIn('assessment_purpose', ['pre_test', 'post_test']);
                 })
                     ->orWhereNotNull('mock_board_id')
                     ->orWhereIn('quiz_stage', ['pre_test', 'post_test']);
@@ -129,6 +139,9 @@ class User extends Authenticatable
             });
         }
 
-        return $query->where('updated_at', '>=', now()->subHours(4))->exists();
+        return $query->where('updated_at', '>=', now()->subHours(4))
+            ->with('module')
+            ->latest('updated_at')
+            ->first();
     }
 }

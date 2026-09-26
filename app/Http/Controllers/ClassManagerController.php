@@ -532,8 +532,8 @@ class ClassManagerController extends Controller
                 $maxStemSim = max($similarity, $stemSimilarity);
                 $conditionFired = null;
 
-                // Condition 1: Nearly exact question stem (>= 88%)
-                if ($maxStemSim >= 88.0) {
+                // Condition 1: Nearly exact question stem (>= 92%)
+                if ($maxStemSim >= 92.0) {
                     $isDuplicate = true;
                     $conditionFired = 1;
                 }
@@ -1286,7 +1286,22 @@ class ClassManagerController extends Controller
             $totalProgress += $prog->progress;
         }
 
-        $hasActiveAssessment = $user->hasActiveFormalAssessment($class->id);
+        $activeAssessmentAttempt = $user->getActiveFormalAssessment($class->id);
+        $hasActiveAssessment = $activeAssessmentAttempt !== null;
+
+        $activeAssessmentLabel = 'Assessment';
+        if ($activeAssessmentAttempt) {
+            $actMod = $activeAssessmentAttempt->module;
+            if ($activeAssessmentAttempt->mock_board_id) {
+                $activeAssessmentLabel = 'Mock Board Exam';
+            } elseif ($actMod?->is_formal_assessment) {
+                $activeAssessmentLabel = 'Formal Assessment';
+            } elseif ($activeAssessmentAttempt->quiz_stage === 'pre_test' || $actMod?->quiz_stage === 'pre_test' || $actMod?->assessment_purpose === 'pre_test' || preg_match('/pre[- ]?(test|assessment)/i', $actMod?->title ?? '')) {
+                $activeAssessmentLabel = 'Pre-Test';
+            } elseif ($activeAssessmentAttempt->quiz_stage === 'post_test' || $actMod?->quiz_stage === 'post_test' || $actMod?->assessment_purpose === 'post_test' || preg_match('/post[- ]?(test|assessment)|final assessment/i', $actMod?->title ?? '')) {
+                $activeAssessmentLabel = 'Post-Test';
+            }
+        }
 
         // Lock modules if they are not yet open (upcoming), closed (overdue / inactive),
         // or if student currently has an active formal assessment in progress (locks lectures).
@@ -1297,7 +1312,7 @@ class ClassManagerController extends Controller
             $isUpcoming = $module->isUpcoming();
             $isClosed = $module->isClosed();
             $isInactive = ! ($module->is_active ?? true);
-            $isLockedByAssessment = $hasActiveAssessment && ! $module->is_formal_assessment && ! $module->is_quiz;
+            $isLockedByAssessment = $hasActiveAssessment && ! $module->is_formal_assessment && ! $module->is_quiz && empty($module->quiz_stage);
 
             if ($isUpcoming || $isClosed || $isLockedByAssessment) {
                 $locked[$module->id] = true;
@@ -1309,7 +1324,7 @@ class ClassManagerController extends Controller
                 'is_inactive' => $isInactive,
                 'is_locked_by_assessment' => $isLockedByAssessment,
                 'is_open' => $module->isOpen() && ! $isLockedByAssessment,
-                'status_label' => $isLockedByAssessment ? 'Locked (Assessment in Progress)' : $module->statusLabel(),
+                'status_label' => $isLockedByAssessment ? "Locked ({$activeAssessmentLabel} in Progress)" : $module->statusLabel(),
                 'available_at' => $module->available_at?->format('M d, Y g:i A'),
                 'due_date' => $module->due_date?->format('M d, Y g:i A'),
             ];
@@ -1384,7 +1399,8 @@ class ClassManagerController extends Controller
             'overallCompletion',
             'attemptLimits',
             'availabilityInfo',
-            'hasActiveAssessment'
+            'hasActiveAssessment',
+            'activeAssessmentLabel'
         ));
     }
 

@@ -6,6 +6,7 @@ use App\Models\ClassModel;
 use App\Models\Module;
 use App\Models\ModuleSubpart;
 use App\Models\QuizAttempt;
+use App\Models\QuizQuestion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -180,5 +181,99 @@ class FormalAssessmentLectureLockTest extends TestCase
         // Subparts still accessible
         $subpartsResponse = $this->get(route('module.subparts.student.index', $this->lectureModule));
         $subpartsResponse->assertStatus(200);
+    }
+
+    public function test_pre_test_in_progress_shows_pre_test_banner(): void
+    {
+        $preTestModule = Module::factory()->create([
+            'class_id' => $this->class->id,
+            'title' => 'Biology Unit 1 Pre-Test',
+            'is_formal_assessment' => false,
+            'is_quiz' => true,
+            'quiz_stage' => 'pre_test',
+        ]);
+
+        QuizAttempt::create([
+            'user_id' => $this->student->id,
+            'module_id' => $preTestModule->id,
+            'quiz_stage' => 'pre_test',
+            'attempt_count' => 1,
+            'score' => 0,
+            'total' => 5,
+            'percentage' => 0,
+            'passed' => false,
+            'status' => 'in_progress',
+            'started_at' => now(),
+        ]);
+
+        $this->actingAs($this->student);
+
+        $response = $this->get(route('student.modules', $this->class));
+        $response->assertStatus(200);
+        $response->assertViewHas('hasActiveAssessment', true);
+        $response->assertSee('Pre-Test in Progress:');
+    }
+
+    public function test_post_test_in_progress_shows_post_test_banner(): void
+    {
+        $postTestModule = Module::factory()->create([
+            'class_id' => $this->class->id,
+            'title' => 'Biology Unit 1 Post-Test',
+            'is_formal_assessment' => false,
+            'is_quiz' => true,
+            'quiz_stage' => 'post_test',
+        ]);
+
+        QuizAttempt::create([
+            'user_id' => $this->student->id,
+            'module_id' => $postTestModule->id,
+            'quiz_stage' => 'post_test',
+            'attempt_count' => 1,
+            'score' => 0,
+            'total' => 5,
+            'percentage' => 0,
+            'passed' => false,
+            'status' => 'in_progress',
+            'started_at' => now(),
+        ]);
+
+        $this->actingAs($this->student);
+
+        $response = $this->get(route('student.modules', $this->class));
+        $response->assertStatus(200);
+        $response->assertViewHas('hasActiveAssessment', true);
+        $response->assertSee('Post-Test in Progress:');
+    }
+
+    public function test_quiz_questions_endpoint_returns_questions_for_pre_and_post_tests_with_null_quiz_stage(): void
+    {
+        $preTestModule = Module::factory()->create([
+            'class_id' => $this->class->id,
+            'title' => 'Chemistry Pre-Test',
+            'is_formal_assessment' => false,
+            'is_quiz' => true,
+            'quiz_stage' => 'pre_test',
+        ]);
+
+        // Questions created without quiz_stage (null)
+        QuizQuestion::create([
+            'module_id' => $preTestModule->id,
+            'question_text' => 'What is H2O?',
+            'options' => json_encode(['A' => 'Water', 'B' => 'Air', 'C' => 'Fire', 'D' => 'Earth']),
+            'correct_option' => 'A',
+            'points' => 1,
+            'order' => 1,
+            'quiz_stage' => null,
+        ]);
+
+        $this->actingAs($this->student);
+
+        // Fetch questions requesting stage pre_test
+        $response = $this->getJson(route('quiz.get.questions', [$preTestModule, 'quiz_stage' => 'pre_test']));
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $this->assertCount(1, $response->json('questions'));
+        $this->assertSame('What is H2O?', $response->json('questions.0.question_text'));
+        $this->assertIsArray($response->json('questions.0.options'));
     }
 }

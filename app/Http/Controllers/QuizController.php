@@ -85,21 +85,35 @@ class QuizController extends Controller
         $query = QuizQuestion::where('module_id', $module->id);
 
         if ($stage !== null) {
-            // Lecture pre-test/post-test — is_quiz does not gate this, since a
-            // lecture module carries subparts as its main content and is not
-            // itself flagged is_quiz.
-            $query->where('quiz_stage', $stage);
-        } else {
-            if (! $module->is_quiz) {
-                return response()->json(['success' => false, 'message' => 'Not a quiz.'], 400);
+            // Check questions explicitly assigned to this quiz stage
+            $questions = (clone $query)->where('quiz_stage', $stage)->orderBy('order')->get();
+
+            // Fallback: If no questions found with this stage (e.g. Test Bank imports or dedicated pre/post test modules),
+            // get unassigned (quiz_stage is null) questions or all module questions.
+            if ($questions->isEmpty()) {
+                $questions = (clone $query)->whereNull('quiz_stage')->orderBy('order')->get();
             }
-            $query->whereNull('quiz_stage');
+
+            if ($questions->isEmpty()) {
+                $questions = (clone $query)->orderBy('order')->get();
+            }
+        } else {
+            // First look for quiz_stage = null
+            $questions = (clone $query)->whereNull('quiz_stage')->orderBy('order')->get();
+
+            // Fallback to module's own configured quiz_stage if set
+            if ($questions->isEmpty() && ! empty($module->quiz_stage)) {
+                $questions = (clone $query)->where('quiz_stage', $module->quiz_stage)->orderBy('order')->get();
+            }
+
+            // Fallback to any questions attached to this module
+            if ($questions->isEmpty()) {
+                $questions = (clone $query)->orderBy('order')->get();
+            }
         }
 
-        $questions = $query->orderBy('order')->get();
-
         if ($questions->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'No questions found for this stage.'], 404);
+            return response()->json(['success' => false, 'message' => 'No questions found in this assessment.'], 404);
         }
 
         return response()->json([
@@ -107,7 +121,7 @@ class QuizController extends Controller
             'questions' => $questions->map(fn ($q) => [
                 'id' => $q->id,
                 'question_text' => $q->question_text,
-                'options' => $q->options,
+                'options' => is_array($q->options) ? $q->options : (json_decode((string) $q->options, true) ?? []),
                 'correct' => $q->correct_option,
             ]),
             'time_limit' => $module->time_limit ?? 0,
