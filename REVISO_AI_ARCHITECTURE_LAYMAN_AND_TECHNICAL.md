@@ -26,7 +26,7 @@ Reviso solves this by combining two parts:
 Reviso runs on the **Meta Llama 3 Series** deployed through **Cloudflare Workers AI (Serverless Edge Network)**.
 
 ### Why Did We Choose This Setup?
-- **1. Blazing Fast Speed**: Standard AI chatbots take 1 to 2 minutes to generate a large quiz. Reviso splits the document into parallel micro-tasks and generates 30 to 50 board-exam quality questions in just **4 to 8 seconds**.
+- **1. Resilient Micro-Batch Architecture**: Standard AI chatbots try to generate huge 50-item prompts all at once, which frequently times out or degrades in quality. Reviso breaks the document into smaller, concurrent micro-batches with iterative top-up validation passes, preventing server crashes and ensuring high item quality across large exams (such as 50–60 question assessments).
 - **2. No Expensive Supercomputer Rents**: Traditional AI setups require renting expensive supercomputing GPU servers that cost thousands of dollars monthly even when idle. Cloudflare's serverless edge network only runs when requested, keeping operational costs virtually zero.
 - **3. Student Privacy & Data Security**: Teacher lecture files and student test answers are kept inside an enterprise secure boundary and are never used to train public commercial AI models.
 - **4. 100% Crash-Free Output**: The AI is programmed to communicate strictly in structured data format (JSON). It never adds conversational fluff like *"Here is your quiz!"*—it sends clean, ready-to-save questions directly into the database.
@@ -55,7 +55,7 @@ If you rely on AI alone, you get unpredictable results. That is why Reviso is a 
 
 | Feature | Raw / Standard AI (ChatGPT) | Reviso Hybrid AI System |
 | :--- | :--- | :--- |
-| **Generation Speed** | Slow (45 to 90 seconds for 50 items) | **Ultra-Fast (4 to 8 seconds via parallel pooling)** |
+| **Generation Architecture** | Monolithic Single-Prompt (High timeout risk on 50-60 items) | **Micro-Batch Parallel Pooling (Iterative top-up and validation passes)** |
 | **Duplicate Questions** | Frequent repeats across large exams | **Zero duplicates (guaranteed by 6-point math filter)** |
 | **Answer Key Balance** | Biased (often puts answers on 'A' or 'C') | **Perfect 25% balance across A, B, C, and D** |
 | **Source Accuracy** | May hallucinate outside facts | **Strictly verified against uploaded lecture text** |
@@ -112,7 +112,7 @@ The Generative Layer operates on Meta's Llama 3 series of Transformer-based mode
   70.6 billion parameter model running in 8-bit floating point precision (FP8 Fast) for high-stakes Mock Board examinations, comprehensive multi-domain curriculum cross-validation, and licensure-grade distracter calibration.
 
 ### 2.2 Asynchronous Non-Blocking HTTP Concurrency (`runPool`)
-Rather than serializing LLM generation via a single monolithic prompt (which incurs quadratic attention complexity $\mathcal{O}(n^2)$ over long context windows and high latency timeouts), Reviso executes item generation through asynchronous HTTP pooling (`Http::pool`). The system partitions the target question volume into concurrent micro-tasks (1 to 2 items per prompt) executed simultaneously across Cloudflare edge workers, reducing aggregate latency for a 50-item exam from 75+ seconds to **4.2–7.8 seconds**.
+Rather than serializing LLM generation via a single monolithic prompt (which incurs quadratic attention complexity $\mathcal{O}(n^2)$ over long context windows and high latency timeouts), Reviso executes item generation through asynchronous HTTP pooling (`Http::pool`) combined with iterative top-up validation cycles. The system partitions the target question volume into concurrent micro-tasks (1 to 2 items per prompt) executed across Cloudflare edge workers, ensuring high resilience and preventing gateway timeouts even for comprehensive 50 to 60+ item assessments.
 
 ### 2.3 Strict Constrained Decoding via JSON Schema
 To guarantee 100% syntactic reliability, inference requests enforce native JSON Schema validation at the token generation layer (`response_format: { type: 'json_schema' }`). The grammar constraints force the LLM state machine to output valid JSON object arrays conforming strictly to schema definitions (`question: string`, `options: object`, `correct: enum[A,B,C,D]`, `difficulty: enum`, `question_type: enum`, `evidence: string`), completely eliminating regex markdown stripping failures.
