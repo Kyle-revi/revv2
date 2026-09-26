@@ -947,6 +947,8 @@
         const active = items.findIndex(el => $(el).hasClass('active'));
         const next   = active + dir;
         if (next >= 0 && next < items.length) $(items[next]).trigger('click');
+    }
+
     function isQuizModule(mod) {
         if (!mod) return false;
         return Boolean(
