@@ -72,6 +72,11 @@
     .student-opt-item.opt-student-wrong { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
     .phase-pill-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #cbd5e1; background: #fff; color: #475569; transition: all 0.2s; font-family: var(--font, 'DM Sans', sans-serif); }
     .phase-pill-btn.active { background: #245E55; color: #fff; border-color: #245E55; }
+
+    @keyframes modalScaleIn {
+        from { opacity: 0; transform: scale(0.95) translateY(8px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
 </style>
 
 <div class="mock-batch-analysis">
@@ -143,10 +148,10 @@
                 <button type="button" class="rv-btn rv-btn-secondary" style="height:34px; padding:0 12px; font-size:13px;" onclick="document.getElementById('changeBenchmarkModal').style.display='flex'">
                     <i class="fas fa-exchange-alt"></i> Change Benchmark
                 </button>
-                <form action="{{ route('student.mock-boards.link-historical-exam', $mockBoard->id) }}" method="POST" style="display:inline;">
+                <form id="removeBenchmarkForm" action="{{ route('student.mock-boards.link-historical-exam', $mockBoard->id) }}" method="POST" style="display:inline;">
                     @csrf
                     <input type="hidden" name="historical_board_exam_result_id" value="">
-                    <button type="submit" class="rv-btn rv-btn-danger" style="height:34px; padding:0 10px; font-size:13px;" onclick="return confirm('Remove historical exam benchmark comparison?')">
+                    <button type="button" class="rv-btn rv-btn-danger" style="height:34px; padding:0 10px; font-size:13px; display:inline-flex; align-items:center; justify-content:center;" onclick="openRemoveBenchmarkModal()" title="Remove Benchmark">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </form>
@@ -226,11 +231,16 @@
 @endif
 
 {{-- CHANGE BENCHMARK MODAL --}}
-<div id="changeBenchmarkModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(4px);">
-    <div style="background:#fff; border-radius:12px; padding:24px; max-width:500px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
+<div id="changeBenchmarkModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); align-items:center; justify-content:center; z-index:1100; backdrop-filter:blur(4px); padding:20px;">
+    <div style="background:#fff; border-radius:16px; padding:24px; max-width:500px; width:90%; box-shadow:0 20px 35px -5px rgba(0,0,0,0.2), 0 10px 15px -5px rgba(0,0,0,0.08); animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h3 style="margin:0; font-size:18px; color:#1e293b;">Change Historical Benchmark</h3>
-            <button type="button" onclick="document.getElementById('changeBenchmarkModal').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; color:#94a3b8;">&times;</button>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:34px; height:34px; border-radius:8px; background:#e6f4ea; color:#245E55; display:flex; align-items:center; justify-content:center; font-size:15px;">
+                    <i class="fas fa-exchange-alt"></i>
+                </div>
+                <h3 style="margin:0; font-size:18px; font-weight:600; color:#1e293b;">Change Historical Benchmark</h3>
+            </div>
+            <button type="button" onclick="document.getElementById('changeBenchmarkModal').style.display='none'" style="background:none; border:none; font-size:22px; cursor:pointer; color:#94a3b8;">&times;</button>
         </div>
 
         <form action="{{ route('mock-boards.quick-benchmark', $mockBoard->id) }}" method="POST">
@@ -256,6 +266,40 @@
         </form>
     </div>
 </div>
+
+@if($historicalComparison)
+{{-- REMOVE BENCHMARK CONFIRMATION MODAL --}}
+<div id="removeBenchmarkModal" class="modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); align-items:center; justify-content:center; z-index:1100; backdrop-filter:blur(4px); padding:20px;">
+    <div style="background:#fff; border-radius:16px; padding:28px 24px; max-width:440px; width:100%; box-shadow:0 20px 35px -5px rgba(0,0,0,0.2), 0 10px 15px -5px rgba(0,0,0,0.08); text-align:center; font-family:var(--font, 'DM Sans', sans-serif); animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
+        <div style="width:54px; height:54px; border-radius:50%; background:#fee2e2; color:#dc2626; display:flex; align-items:center; justify-content:center; font-size:22px; margin:0 auto 16px; box-shadow: 0 4px 12px rgba(220,38,38,0.15);">
+            <i class="fas fa-trash-alt"></i>
+        </div>
+        <h3 style="margin:0 0 8px; font-size:19px; font-weight:600; color:#1e293b;">
+            Remove Benchmark Comparison?
+        </h3>
+        <p style="margin:0 0 16px; font-size:14px; color:#64748b; line-height:1.5;">
+            Are you sure you want to remove the physical exam benchmark comparison for <br>
+            <strong style="color:#1e293b;">{{ $historicalComparison['exam_label'] }} ({{ $historicalComparison['exam_period_or_year'] }})</strong>?
+        </p>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#475569; display:flex; justify-content:space-between; align-items:center;">
+            <span style="display:flex; align-items:center; gap:6px; color:#64748b;">
+                <i class="fas fa-chart-pie" style="color:#245E55;"></i> Physical Passing Rate:
+            </span>
+            <span style="font-weight:700; color:#1e293b; font-size:15px;">{{ $historicalComparison['historical_passing_rate'] }}%</span>
+        </div>
+
+        <div style="display:flex; justify-content:center; gap:10px;">
+            <button type="button" class="rv-btn rv-btn-secondary" style="height:40px; padding:0 18px; font-size:14px; flex:1; font-weight:500;" onclick="closeRemoveBenchmarkModal()">
+                Cancel
+            </button>
+            <button type="button" class="rv-btn rv-btn-danger" style="height:40px; padding:0 18px; font-size:14px; flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:600;" onclick="confirmRemoveBenchmark()">
+                <i class="fas fa-trash-alt"></i> Yes, Remove
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 
 <div class="tab-nav" style="display:flex; gap:8px; margin-bottom:24px; border-bottom:2px solid #DDD8CF;">
     <button class="tab-btn active" onclick="switchTab('overview', this)" style="padding:12px 20px; border:none; background:none; font-weight:500; font-size:15px; cursor:pointer; border-bottom:3px solid #245E55; color:#2D2D2B; font-family: var(--font, 'DM Sans', sans-serif);">Overview & Student Results</button>
@@ -894,12 +938,54 @@
         currentStudentData = null;
     }
 
+    function openRemoveBenchmarkModal() {
+        const modal = document.getElementById('removeBenchmarkModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeRemoveBenchmarkModal() {
+        const modal = document.getElementById('removeBenchmarkModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    function confirmRemoveBenchmark() {
+        const form = document.getElementById('removeBenchmarkForm');
+        if (form) {
+            form.submit();
+        }
+    }
+
     window.onclick = function(event) {
-        const modal = document.getElementById('studentItemModal');
-        if (event.target === modal) {
+        const studentModal = document.getElementById('studentItemModal');
+        if (event.target === studentModal) {
             closeStudentItemModal();
         }
+
+        const removeModal = document.getElementById('removeBenchmarkModal');
+        if (event.target === removeModal) {
+            closeRemoveBenchmarkModal();
+        }
+
+        const changeModal = document.getElementById('changeBenchmarkModal');
+        if (event.target === changeModal) {
+            changeModal.style.display = 'none';
+        }
     };
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeStudentItemModal();
+            closeRemoveBenchmarkModal();
+            const changeModal = document.getElementById('changeBenchmarkModal');
+            if (changeModal) {
+                changeModal.style.display = 'none';
+            }
+        }
+    });
 
     function escapeHtml(str) {
         if (!str) return '';
