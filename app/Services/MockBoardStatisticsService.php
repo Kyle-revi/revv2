@@ -647,16 +647,21 @@ class MockBoardStatisticsService
 
     public function computeHierarchicalStats(MockBoard $mockBoard, string $program)
     {
-        $classes = ClassModel::where('program', $program)->get();
+        $programVariants = $this->resolveProgramVariants($program);
+        $classes = ClassModel::where(function ($q) use ($program, $programVariants) {
+            $q->whereIn('program', $programVariants)
+                ->orWhereRaw('LOWER(program) = ?', [strtolower($program)]);
+        })->get();
+
         $batchTotalStudents = 0;
         $batchTotalPassed = 0;
         $classData = [];
 
         foreach ($classes as $class) {
+            $studentIds = $class->students()->pluck('users.id');
+
             $attempts = $mockBoard->attempts()
-                ->whereHas('user', function ($query) use ($class) {
-                    $query->where('class_id', $class->id);
-                })
+                ->whereIn('user_id', $studentIds)
                 ->where('phase_type', 'pre_boards')
                 ->get();
 
@@ -687,24 +692,37 @@ class MockBoardStatisticsService
 
     public function getDetailedStudentResults(MockBoard $mockBoard, string $program)
     {
+        $programVariants = $this->resolveProgramVariants($program);
+
         // 1. Get all students belonging to this program
-        $users = User::where('program', $program)
+        $programUsers = User::where(function ($q) use ($program, $programVariants) {
+            $q->whereIn('program', $programVariants)
+                ->orWhereRaw('LOWER(program) = ?', [strtolower($program)]);
+        })
             ->where('role', 'student')
+            ->with('classes')
             ->get();
 
-        // 2. Get all attempts for this specific mock board for these users
+        // 2. Get all attempts for this specific mock board
         $allAttempts = $mockBoard->attempts()
-            ->whereIn('user_id', $users->pluck('id'))
+            ->with('user.classes')
             ->get();
+
+        $attemptUsers = $allAttempts->pluck('user')->filter()->unique('id');
+
+        // Merge program students and actual attempt users
+        $users = $programUsers->concat($attemptUsers)->unique('id');
 
         $studentResults = [];
 
-        // Set this to false if you want to HIDE students like "Charlie Chen" who haven't started
+        // Set this to false if you want to HIDE students who haven't started
         $includeIncomplete = false;
 
         foreach ($users as $user) {
-            $preTest = $allAttempts->where('user_id', $user->id)->firstWhere('phase_type', 'pre_test');
-            $preBoards = $allAttempts->where('user_id', $user->id)->firstWhere('phase_type', 'pre_boards');
+            $userAttempts = $allAttempts->where('user_id', $user->id);
+            $preTest = $userAttempts->where('phase_type', 'pre_test')->first();
+            $preBoards = $userAttempts->where('phase_type', 'pre_boards')->sortByDesc('percentage')->first()
+                ?? $userAttempts->where('phase_type', 'pre_boards')->first();
 
             // Skip students with no data if we don't want incomplete records
             if (! $includeIncomplete && ! $preTest && ! $preBoards) {
@@ -732,31 +750,37 @@ class MockBoardStatisticsService
                 }
             }
 
+            $completedAt = $preBoards?->created_at?->format('M d, Y')
+                ?? $preTest?->created_at?->format('M d, Y')
+                ?? 'Pending';
+
             $studentResults[] = [
                 'user_id' => $user->id,
                 'name' => $user->name,
-                'program' => ucfirst($program),
-                'class_name' => $user->class?->name ?? 'N/A',
+                'program' => ucfirst($user->program ?? $program),
+                'class_name' => $user->classes->first()?->name ?? 'N/A',
                 'pre_test_score' => $preTestScore,
-                'pre_test_passed' => $preTest ? $preTest->passed : false,
+                'pre_test_passed' => $preTest ? (bool) $preTest->passed : false,
                 'pre_boards_score' => $preBoardsScore,
-                'pre_boards_passed' => $preBoards ? $preBoards->passed : false,
+                'pre_boards_passed' => $preBoards ? (bool) $preBoards->passed : false,
                 'improvement' => $improvement,
                 'board_likelihood' => $likelihood,
-                'completed_at' => $preBoards ? $preBoards->created_at->format('M d, Y') : 'Pending',
+                'completed_at' => $completedAt,
             ];
         }
 
         // Sort by name for a cleaner table
         return collect($studentResults)->sortBy('name')->values()->all();
-
     }
 
     public function calculateBatchANOVA(MockBoard $mockBoard, string $program)
     {
+        $programVariants = $this->resolveProgramVariants($program);
+
         $attempts = $mockBoard->attempts()
-            ->whereHas('user', function ($q) use ($program) {
-                $q->where('program', $program);
+            ->whereHas('user', function ($q) use ($program, $programVariants) {
+                $q->whereIn('program', $programVariants)
+                    ->orWhereRaw('LOWER(program) = ?', [strtolower($program)]);
             })
             ->get()
             ->groupBy('user_id');

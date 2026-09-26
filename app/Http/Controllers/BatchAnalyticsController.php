@@ -395,9 +395,19 @@ class BatchAnalyticsController extends Controller
             }
         }
 
+        $programMap = [
+            'psych' => ['psych', 'psychology'],
+            'psychology' => ['psych', 'psychology'],
+            'educ' => ['educ', 'education'],
+            'education' => ['educ', 'education'],
+            'accountancy' => ['accountancy'],
+        ];
+        $programVariants = $programMap[strtolower($program)] ?? [$program];
+
         $attempts = $mockBoard->attempts()
-            ->whereHas('user', function ($q) use ($program) {
-                $q->where('program', $program);
+            ->whereHas('user', function ($q) use ($program, $programVariants) {
+                $q->whereIn('program', $programVariants)
+                    ->orWhereRaw('LOWER(program) = ?', [strtolower($program)]);
             })
             ->get()
             ->groupBy('user_id');
