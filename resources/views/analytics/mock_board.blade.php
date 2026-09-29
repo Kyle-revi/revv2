@@ -207,14 +207,12 @@
 <div id="tab-item-analysis" style="display:none;">
     <div class="filter-card" style="justify-content:flex-start; gap:16px; align-items:center;">
         <span class="filter-label">Phase:</span>
-        <button class="tab-btn phase-btn active" onclick="switchPhase('pre_boards', this)" style="padding:8px 16px; border:1px solid #DDD8CF; border-radius:8px; background:#245E55; color:#fff; cursor:pointer;">Pre-Boards (Post-Test)</button>
-        <span style="font-size:12px; color:#8a8580; margin-left:8px; display:inline-flex; align-items:center; gap:4px;">
-            <i class="fas fa-info-circle"></i> Item analysis is disabled for Pre-Test (Diagnostic Assessment).
-        </span>
+        <button class="tab-btn phase-btn active" onclick="switchPhase('pre_test', this)" style="padding:8px 16px; border:1px solid #DDD8CF; border-radius:8px; background:#245E55; color:#fff; cursor:pointer;">Pre-Test</button>
+        <button class="tab-btn phase-btn" onclick="switchPhase('pre_boards', this)" style="padding:8px 16px; border:1px solid #DDD8CF; border-radius:8px; background:#fff; color:#5a5550; cursor:pointer;">Pre-Boards</button>
     </div>
 
-    @foreach(['pre_boards'] as $phaseKey)
-    <div id="phase-{{ $phaseKey }}" style="">
+    @foreach(['pre_test', 'pre_boards'] as $phaseKey)
+    <div id="phase-{{ $phaseKey }}" style="{{ $phaseKey !== 'pre_test' ? 'display:none;' : '' }}">
         @php $phaseQuestions = $item_analysis[$phaseKey] ?? []; @endphp
 
         @if(empty($phaseQuestions))

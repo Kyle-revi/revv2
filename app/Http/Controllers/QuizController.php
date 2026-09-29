@@ -713,6 +713,16 @@ class QuizController extends Controller
         $user = Auth::user();
         $stage = $this->resolveStage($request);
 
+        // Item analysis for Pre-Test is disabled for students
+        $isPreTest = ($stage === 'pre_test') || ($module->quiz_stage === 'pre_test');
+        if ($user && $user->role === 'student' && $isPreTest) {
+            return response()->json([
+                'success' => false,
+                'disabled' => true,
+                'message' => 'Item analysis is disabled for Pre-Test (Diagnostic Assessment). Full item analysis is available on Post-Test.',
+            ], 403);
+        }
+
         $attempt = QuizAttempt::where('user_id', $user->id)
             ->where('module_id', $module->id)
             ->when($stage, fn ($q) => $q->where('quiz_stage', $stage))

@@ -827,12 +827,14 @@ class StudentMockBoardController extends Controller
             // one row per completed attempt, unlike QuizAttempt which is a
             // single overwritten row per (user, module, mock_board_id) and
             // can never hold more than one entry's worth of history.
+            $isPreTest = ($phaseModel->phase_type === 'pre_test');
+
             return QuizAttemptSnapshot::where('user_id', $user->id)
                 ->where('module_id', $phaseModel->module_id)
                 ->where('mock_board_id', $mockBoard->id)
                 ->orderBy('attempt_number', 'asc')
                 ->get()
-                ->map(function ($snap) {
+                ->map(function ($snap) use ($isPreTest) {
                     return [
                         'attempt_number' => $snap->attempt_number,
                         'score' => $snap->score,
@@ -840,7 +842,8 @@ class StudentMockBoardController extends Controller
                         'percentage' => $snap->percentage,
                         'passed' => $snap->passed,
                         'completed_at' => optional($snap->completed_at)->toIso8601String(),
-                        'questions' => collect($snap->questions_snapshot ?? [])->map(function ($q) {
+                        'is_pre_test' => $isPreTest,
+                        'questions' => $isPreTest ? [] : collect($snap->questions_snapshot ?? [])->map(function ($q) {
                             return [
                                 'question_text' => $q['question_text'] ?? '',
                                 'options' => $q['options'] ?? [],

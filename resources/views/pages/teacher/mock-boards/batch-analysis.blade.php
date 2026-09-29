@@ -404,18 +404,11 @@
             @foreach($phasesToRender as $idx => $ph)
                 @php
                     $pKey = is_numeric($ph->id) ? 'phase_'.$ph->id : $ph->id;
-                    $isPreTest = ($ph->phase_type ?? '') === 'pre_test';
                 @endphp
-                <button class="tab-btn phase-btn {{ $idx === $defaultActiveIdx ? 'active' : '' }}" onclick="switchPhase('{{ $pKey }}', this)" style="padding:8px 16px; border:1px solid #DDD8CF; border-radius:8px; background: {{ $idx === $defaultActiveIdx ? '#245E55' : '#fff' }}; color: {{ $idx === $defaultActiveIdx ? '#fff' : '#5a5550' }}; cursor:pointer;">
+                <button class="tab-btn phase-btn {{ $idx === 0 ? 'active' : '' }}" onclick="switchPhase('{{ $pKey }}', this)" style="padding:8px 16px; border:1px solid #DDD8CF; border-radius:8px; background: {{ $idx === 0 ? '#245E55' : '#fff' }}; color: {{ $idx === 0 ? '#fff' : '#5a5550' }}; cursor:pointer;">
                     {{ $ph->phase_label ?? ucfirst(str_replace('_', ' ', $ph->phase_type)) }}
-                    @if($isPreTest)
-                        <span style="font-size:11px; opacity:0.85; margin-left:4px; font-weight:normal;">(Pre-Test — Analysis Disabled)</span>
-                    @endif
                 </button>
             @endforeach
-            <span class="badge" style="background:#fef3c7; color:#92400e; font-size:12px; font-weight:500; padding:6px 12px; border-radius:6px; display:inline-flex; align-items:center; gap:6px; margin-left:8px;">
-                <i class="fas fa-info-circle"></i> Item analysis is disabled for Pre-Test (Diagnostic Assessment)
-            </span>
         </div>
 
         @if(isset($boardClasses) && $boardClasses->count() > 0)
@@ -462,7 +455,7 @@
             $barColors[] = $colorMap[$q['interpretation']] ?? $defaultColor;
         }
     @endphp
-    <div id="phase-{{ $pKey }}" class="phase-container" style="{{ $idx !== $defaultActiveIdx ? 'display:none;' : '' }}"
+    <div id="phase-{{ $pKey }}" class="phase-container" style="{{ $idx !== 0 ? 'display:none;' : '' }}"
          data-dist-labels='@json($distLabels)'
          data-dist-values='@json($distValues)'
          data-dist-colors='@json($distColors)'
@@ -470,15 +463,6 @@
          data-bar-short-labels='@json($barShortLabels)'
          data-bar-values='@json($barValues)'
          data-bar-colors='@json($barColors)'>
-
-        @if(($ph->phase_type ?? '') === 'pre_test')
-            <div style="background:#FFF9F2; border:1px solid #FFE2C6; border-left:4px solid #ED773C; border-radius:8px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
-                <i class="fas fa-info-circle" style="color:#ED773C; font-size:20px; flex-shrink:0;"></i>
-                <div style="font-size:14px; color:#6B4B32; line-height:1.5;">
-                    <strong style="color:#B44615;">Item Analysis Disabled for Pre-Test:</strong> In accordance with educational evaluation guidelines, psychometric item analysis (difficulty index and distractor efficiency) is disabled for diagnostic Pre-Tests. Full item analysis is enabled for Post-Test phases.
-                </div>
-            </div>
-        @endif
 
         @if(empty($phaseQuestions))
             <div class="rv-table-card" style="padding: 40px 20px; text-align: center; color: #8a8580;">
@@ -829,11 +813,9 @@
 
         document.getElementById('modalStudentMeta').textContent = `${student.name} (${student.idnumber}) · ${student.program} · Attempted: ${summary.attempted_at}`;
 
-        // Phase Pills (Item Analysis is evaluated on post-test phases only)
+        // Phase Pills
         let phaseTabsHtml = '';
-        const evaluativePhases = (data.phases || []).filter(ph => ph.phase_type !== 'pre_test');
-        const phasesToDisplay = evaluativePhases.length > 0 ? evaluativePhases : (data.phases || []);
-        phasesToDisplay.forEach(ph => {
+        (data.phases || []).forEach(ph => {
             const isActive = activePhase && ph.id === activePhase.id;
             const scoreLabel = ph.percentage !== null && ph.percentage !== undefined ? ` (${ph.percentage}%)` : ' (Pending)';
             phaseTabsHtml += `

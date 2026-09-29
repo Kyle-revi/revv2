@@ -295,17 +295,24 @@
             var pct = Math.round(a.percentage);
             var scoreClass = a.passed ? 'pass' : 'fail';
             var dateStr = a.completed_at ? new Date(a.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-            var itemId = phaseId + '_' + a.attempt_number;
-            var qHtml = (a.questions || []).map(function (q, i) {
-                var cls = q.is_correct ? 'correct' : 'incorrect';
-                var yourAns = q.selected_option ? q.selected_option + (q.options && q.options[q.selected_option] ? ' - ' + q.options[q.selected_option] : '') : 'No answer';
-                var correctAns = q.correct_option ? q.correct_option + (q.options && q.options[q.correct_option] ? ' - ' + q.options[q.correct_option] : '') : '-';
-                return '<div class="qz-history-q ' + cls + '">' +
-                    '<p class="qz-history-q-text">' + (i + 1) + '. ' + escHtml(q.question_text || '') + '</p>' +
-                    '<p class="qz-history-q-ans"><i class="fas fa-' + (q.is_correct ? 'check' : 'times') + '"></i> Your answer: ' + escHtml(yourAns) + '</p>' +
-                    (!q.is_correct ? '<p class="qz-history-q-ans"><i class="fas fa-check"></i> Correct answer: ' + escHtml(correctAns) + '</p>' : '') +
+            var qHtml = '';
+            if (a.is_pre_test) {
+                qHtml = '<div style="padding:14px 16px; background:#FFF9F2; border:1px solid #FFE2C6; border-left:4px solid #ED773C; border-radius:8px; color:#6B4B32; font-size:13px; line-height:1.5;">' +
+                    '<i class="fas fa-lock" style="color:#ED773C; margin-right:6px;"></i>' +
+                    '<strong>Item Analysis Disabled for Pre-Test:</strong> Question-by-question breakdown and item analysis are disabled for diagnostic Pre-Tests. Full item analysis and solutions are available on Post-Test / Pre-Boards.' +
                     '</div>';
-            }).join('');
+            } else {
+                qHtml = (a.questions || []).map(function (q, i) {
+                    var cls = q.is_correct ? 'correct' : 'incorrect';
+                    var yourAns = q.selected_option ? q.selected_option + (q.options && q.options[q.selected_option] ? ' - ' + q.options[q.selected_option] : '') : 'No answer';
+                    var correctAns = q.correct_option ? q.correct_option + (q.options && q.options[q.correct_option] ? ' - ' + q.options[q.correct_option] : '') : '-';
+                    return '<div class="qz-history-q ' + cls + '">' +
+                        '<p class="qz-history-q-text">' + (i + 1) + '. ' + escHtml(q.question_text || '') + '</p>' +
+                        '<p class="qz-history-q-ans"><i class="fas fa-' + (q.is_correct ? 'check' : 'times') + '"></i> Your answer: ' + escHtml(yourAns) + '</p>' +
+                        (!q.is_correct ? '<p class="qz-history-q-ans"><i class="fas fa-check"></i> Correct answer: ' + escHtml(correctAns) + '</p>' : '') +
+                        '</div>';
+                }).join('');
+            }
             return '<div class="qz-history-item" id="historyItem_' + itemId + '">' +
                 '<div class="qz-history-row" onclick="toggleHistoryItem(\'' + itemId + '\')">' +
                 '<div class="qz-history-left"><span class="qz-history-num">Attempt ' + a.attempt_number + '</span>' +

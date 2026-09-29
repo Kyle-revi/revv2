@@ -171,21 +171,60 @@ class StudentItemAnalysisTest extends TestCase
             'is_correct' => true,
         ]);
 
+        // 1. Student is forbidden from fetching pre-test item analysis
         $response = $this->actingAs($student)->getJson(route('quiz.analysis', [
             'module' => $module,
             'quiz_stage' => 'pre_test',
         ]));
 
-        $response->assertOk();
+        $response->assertStatus(403);
         $response->assertJson([
+            'success' => false,
+            'disabled' => true,
+        ]);
+
+        // 2. Student CAN fetch post-test item analysis
+        $postAttempt = QuizAttempt::query()->create([
+            'user_id' => $student->id,
+            'module_id' => $module->id,
+            'quiz_stage' => 'post_test',
+            'attempt_count' => 1,
+            'score' => 1,
+            'total' => 1,
+            'percentage' => 100,
+            'passed' => true,
+            'status' => 'completed',
+            'started_at' => now()->subMinutes(5),
+            'completed_at' => now(),
+        ]);
+
+        $qPost = QuizQuestion::query()->create([
+            'module_id' => $module->id,
+            'quiz_stage' => 'post_test',
+            'question_text' => 'Post-test Question 1',
+            'options' => ['A' => 'Opt 1', 'B' => 'Opt 2'],
+            'correct_option' => 'A',
+            'points' => 1,
+            'order' => 1,
+        ]);
+
+        QuizAnswer::query()->create([
+            'attempt_id' => $postAttempt->id,
+            'question_id' => $qPost->id,
+            'selected_option' => 'A',
+            'is_correct' => true,
+        ]);
+
+        $postResponse = $this->actingAs($student)->getJson(route('quiz.analysis', [
+            'module' => $module,
+            'quiz_stage' => 'post_test',
+        ]));
+
+        $postResponse->assertOk();
+        $postResponse->assertJson([
             'success' => true,
             'score' => 1,
             'total' => 1,
-            'summary' => [
-                'total' => 1,
-                'correct' => 1,
-                'incorrect' => 0,
-            ],
         ]);
     }
 
