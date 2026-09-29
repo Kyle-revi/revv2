@@ -843,7 +843,7 @@ class StudentMockBoardController extends Controller
                         'passed' => $snap->passed,
                         'completed_at' => optional($snap->completed_at)->toIso8601String(),
                         'is_pre_test' => $isPreTest,
-                        'questions' => $isPreTest ? [] : collect($snap->questions_snapshot ?? [])->map(function ($q) {
+                        'questions' => collect($snap->questions_snapshot ?? [])->map(function ($q) {
                             return [
                                 'question_text' => $q['question_text'] ?? '',
                                 'options' => $q['options'] ?? [],

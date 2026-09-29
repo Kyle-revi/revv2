@@ -228,6 +228,64 @@ class StudentItemAnalysisTest extends TestCase
         ]);
     }
 
+    public function test_student_can_fetch_item_analysis_for_mock_board_pre_test(): void
+    {
+        $teacher = $this->createUser(['role' => 'teacher', 'program' => 'teacher']);
+        $student = $this->createUser(['role' => 'student', 'program' => 'educ']);
+
+        $mbModule = Module::query()->create([
+            'title' => 'Mock Board Pre-Test Phase',
+            'is_quiz' => true,
+            'is_mock_board' => true,
+            'is_formal_assessment' => true,
+            'is_active' => true,
+            'passing_grade' => 75,
+            'created_by' => $teacher->id,
+        ]);
+
+        $q = QuizQuestion::query()->create([
+            'module_id' => $mbModule->id,
+            'quiz_stage' => 'pre_test',
+            'question_text' => 'Mock Board Question 1',
+            'options' => ['A' => 'Opt 1', 'B' => 'Opt 2'],
+            'correct_option' => 'A',
+            'points' => 1,
+            'order' => 1,
+        ]);
+
+        $attempt = QuizAttempt::query()->create([
+            'user_id' => $student->id,
+            'module_id' => $mbModule->id,
+            'quiz_stage' => 'pre_test',
+            'score' => 1,
+            'total' => 1,
+            'percentage' => 100,
+            'passed' => true,
+            'status' => 'completed',
+            'started_at' => now()->subMinutes(5),
+            'completed_at' => now(),
+        ]);
+
+        QuizAnswer::query()->create([
+            'attempt_id' => $attempt->id,
+            'question_id' => $q->id,
+            'selected_option' => 'A',
+            'is_correct' => true,
+        ]);
+
+        $response = $this->actingAs($student)->getJson(route('quiz.analysis', [
+            'module' => $mbModule,
+            'quiz_stage' => 'pre_test',
+        ]));
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'score' => 1,
+            'total' => 1,
+        ]);
+    }
+
     private function createUser(array $overrides = []): User
     {
         static $counter = 7000;

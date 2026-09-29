@@ -713,9 +713,9 @@ class QuizController extends Controller
         $user = Auth::user();
         $stage = $this->resolveStage($request);
 
-        // Item analysis for Pre-Test is disabled for students
+        // Item analysis for standard class Pre-Test is disabled for students (enabled for mock boards)
         $isPreTest = ($stage === 'pre_test') || ($module->quiz_stage === 'pre_test');
-        if ($user && $user->role === 'student' && $isPreTest) {
+        if ($user && $user->role === 'student' && $isPreTest && ! $module->is_mock_board) {
             return response()->json([
                 'success' => false,
                 'disabled' => true,
