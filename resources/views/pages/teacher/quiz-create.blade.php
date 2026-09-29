@@ -327,6 +327,15 @@
     {{-- AI Tab (Only rendered if it's NOT a mock board) --}}
     @if(!($isMockBoard ?? false))
         <div class="qc-tab-panel {{ $isEditing ? '' : 'active' }}" id="panel-ai">
+            {{-- AI Accuracy Disclaimer Notice --}}
+            <div style="background:#FFF9F2; border:1px solid #FFE2C6; border-left:4px solid #ED773C; border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:flex-start; gap:12px;">
+                <i class="fas fa-exclamation-triangle" style="color:#ED773C; font-size:16px; margin-top:2px; flex-shrink:0;"></i>
+                <div style="font-size:14px; color:#6B4B32; line-height:1.5;">
+                    <strong style="display:block; margin-bottom:2px; color:#B44615;">AI Generation Disclaimer</strong>
+                    AI-generated assessment content is an assistive drafting tool and is not 100% accurate. Please review, verify, and edit all questions, choices, and answer keys carefully before publishing this quiz to students.
+                </div>
+            </div>
+
             <form id="aiQuizForm" method="POST" action="{{ route('quiz.generate', $module) }}" enctype="multipart/form-data">
                 @csrf
 <div class="qc-row" style="grid-template-columns: 1fr;">
@@ -361,6 +370,10 @@
                 <button type="submit" id="aiSubmitBtn" class="rv-btn rv-btn-primary" style="margin-top:14px;" {{ (isset($isAiQuizGenerationEnabled) && ! $isAiQuizGenerationEnabled) ? 'disabled' : '' }}>
                     <i class="fas fa-robot"></i> Generate with AI
                 </button>
+                <p style="font-size:13px; color:#888; margin-top:8px; display:flex; align-items:center; gap:6px;">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Generated questions will load below for teacher verification and editing before saving.</span>
+                </p>
             </form>
         </div>
     @endif

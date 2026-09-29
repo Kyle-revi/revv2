@@ -16,6 +16,12 @@
     <div class="tab-content">
         <!-- AI Tab -->
         <div class="tab-pane fade show active" id="ai" role="tabpanel">
+            <div class="alert alert-warning d-flex align-items-center mb-3" role="alert" style="font-size: 14px;">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <div>
+                    <strong>AI Generation Disclaimer:</strong> AI-generated content is intended for study drafting assistance and may not be 100% accurate. Please review and cross-reference all questions with your official lecture notes and textbooks.
+                </div>
+            </div>
             <form id="aiQuizForm" method="POST" action="{{ route('quiz.generate', $module) }}">
                 @csrf
                 <div class="row mb-3">
