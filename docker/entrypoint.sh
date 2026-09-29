@@ -33,9 +33,14 @@ php artisan storage:link || true
 php artisan config:clear || true
 php artisan cache:clear || true
 
+# Tune Alpine musl DNS resolution for Railway internal networking
+if [ -w /etc/resolv.conf ]; then
+    echo "options ndots:1 single-request-reopen" >> /etc/resolv.conf 2>/dev/null || true
+fi
+
 # Run database migrations with retry
 echo "Attempting database migration..."
-MAX_TRIES=5
+MAX_TRIES=15
 COUNT=0
 while [ $COUNT -lt $MAX_TRIES ]; do
     if php artisan migrate --force --no-interaction; then
