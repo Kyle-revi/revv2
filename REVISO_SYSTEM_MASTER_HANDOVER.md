@@ -15,7 +15,7 @@
    - [C. Mock Board Exam & Passing Likelihood Prediction](#c-mock-board-exam--passing-likelihood-prediction)
    - [D. Psychometric Item Analysis & Distractor Efficiency](#d-psychometric-item-analysis--distractor-efficiency)
    - [E. Historical Board Exam Comparison Engine](#e-historical-board-exam-comparison-engine)
-   - [F. AI Quiz Generation & Grounding Validation Pipeline](#f-ai-quiz-generation--grounding-validation-pipeline)
+   - [F. AI Engine & Grounding Validation Pipeline (Cloudflare Workers AI)](#f-ai-engine--grounding-validation-pipeline-cloudflare-workers-ai)
    - [G. Test Bank Management System](#g-test-bank-management-system)
    - [H. Granular Module Visibility Controls (`All`, `Selected`, `Except`)](#h-granular-module-visibility-controls-all-selected-except)
    - [I. Admin Approvals & User Role Lifecycle](#i-admin-approvals--user-role-lifecycle)
@@ -36,6 +36,7 @@ The platform bridges classroom learning and board exam readiness through:
 - **Simulated Mock Board Examinations** with passing likelihood algorithms
 - **Psychometric Item Analysis** (Difficulty Index & Distractor Efficiency)
 - **Grounded AI Assessment Generation** (strictly anchored to teacher lectures without hallucinated options)
+- **Individualized AI Insights & Class Performance Analytics**
 - **Comprehensive Lecture & Test Bank Management**
 
 ---
@@ -45,7 +46,7 @@ The platform bridges classroom learning and board exam readiness through:
 - **Backend Framework:** Laravel 12 (PHP 8.4 / 8.5)
 - **Frontend Architecture:** Blade Templates + Livewire 4 + Alpine.js + Tailwind CSS + Argon Dashboard UI
 - **Database:** MySQL (Production on Railway) / SQLite (Automated PHPUnit & Playwright Testing)
-- **AI Inference Engine:** Google Gemini API (`gemini-2.5-flash`) with strict rule-based post-validation heuristics
+- **AI Inference Engine:** Cloudflare Workers AI (`App\Services\CloudflareAI`) running Meta Llama models (`@cf/meta/llama-3.2-3b-instruct`, `@cf/meta/llama-3.1-8b-instruct`, `@cf/meta/llama-3.3-70b-instruct-fp8-fast`) with rule-based post-validation heuristics
 - **Containerization & Web Server:** Docker (Alpine Linux) + Nginx + PHP-FPM + Supervisord
 - **Deployment Platform:** Railway (Automated Dockerfile build, DB migrations & seeders via entrypoint script)
 - **Automated Testing Suite:** 175 PHPUnit Unit/Feature Tests + Playwright Browser E2E Runner
@@ -58,8 +59,8 @@ Reviso enforces strict Role-Based Access Control (RBAC) and program-specific rou
 
 | Role | Programs Supported | Default Dashboard Route | Key Capabilities |
 | :--- | :--- | :--- | :--- |
-| **Student** | `Psychology` (`psych`), `Education` (`educ`), `Accountancy` (`accountancy`) | `/psych-dashboard`<br>`/educ-dashboard`<br>`/accountancy-dashboard` | Take pre-tests, post-tests, quizzes, mock boards; view item analysis, lecture files, announcements, and program-scoped chats. |
-| **Teacher** | `Psychology`, `Education`, `Accountancy` | `/teacher-dashboard` | Manage owned classes; upload lectures; generate AI assessments; manage test bank; create mock boards; view student item analysis and benchmark comparisons. |
+| **Student** | `Psychology` (`psych`), `Education` (`educ`), `Accountancy` (`accountancy`) | `/psych-dashboard`<br>`/educ-dashboard`<br>`/accountancy-dashboard` | Take pre-tests, post-tests, quizzes, mock boards; view AI insights, item analysis, lecture files, announcements, and program-scoped chats. |
+| **Teacher** | `Psychology`, `Education`, `Accountancy` | `/teacher-dashboard` | Manage owned classes; upload lectures; trigger AI quiz generation; manage test bank; create mock boards; view student item analysis and benchmark comparisons. |
 | **Admin** | Institutional Admin | `/admin-dashboard` | Approve/reject user registrations; deactivate teachers with reason logging; preview and approve mock boards; view program-wide board passing rates. |
 | **Superadmin** | Master Admin | `/admin-dashboard` | Manage Admin accounts; reset admin passwords; configure Global AI API settings; override role program locks. |
 
@@ -104,17 +105,24 @@ Reviso enforces strict Role-Based Access Control (RBAC) and program-specific rou
   - Teachers link their class Mock Board to the corresponding PRC exam year.
   - The system automatically generates a **Comparison Delta** (e.g., Class Mock Passing Rate $82\%$ vs National PRC Average $74.5\% \rightarrow +7.5\%$ Delta).
 
-### F. AI Quiz Generation & Grounding Validation Pipeline
-- **Pipeline Architecture:**
-  1. **Document Ingestion:** Teacher uploads PDF/DOCX lecture.
-  2. **Preprocessing:** Watermarks, header/footer noise, and OCR artifacts are stripped.
-  3. **Context Slicing:** Lectures are split into semantic chunks respecting topic boundaries.
-  4. **AI Generation (Gemini 2.5 Flash):** Generates Higher-Order Thinking Skills (HOTS) multiple-choice questions with rationales.
-  5. **Rule-Based Post-Validation Heuristics (`AiQuizContentValidationTest`):**
-     - *Stem Echo Rejection:* Discards options that merely repeat the question stem.
-     - *Deduplication:* Semantic distance checks prevent duplicate questions within and across batches.
-     - *Grounding Evidence Check:* Every question must cite verifiable evidence from the source lecture text.
-     - *Threshold Guard:* If generated question quality falls below acceptance threshold, existing questions are preserved.
+### F. AI Engine & Grounding Validation Pipeline (Cloudflare Workers AI)
+The system uses **Cloudflare Workers AI** (`App\Services\CloudflareAI`) configured via `config/services.php`:
+
+1. **AI Quiz Generation (`prompt.quiz_generation`):**
+   - Automatically generates multiple-choice questions directly from uploaded lecture PDFs or DOCX files.
+   - Strips PDF noise, watermark text, and header artifacts prior to LLM processing.
+2. **AI Student Insights (`prompt.quiz_insights`):**
+   - Analyzes student answers after an attempt and produces:
+     - **Strong Areas:** Topics/questions mastered.
+     - **Weak Areas:** Concepts where the student missed key questions.
+     - **Recommendation:** Targeted study advice.
+3. **Class Performance Summary (`prompt.class_summary`):**
+   - Synthesizes class averages, passing distributions, and weak competencies for the instructor.
+4. **Rule-Based Post-Validation Heuristics (`AiQuizContentValidationTest`):**
+   - *Stem Echo Rejection:* Discards options that repeat question stems.
+   - *Deduplication:* Semantic distance checks prevent duplicate questions within and across batches.
+   - *Grounding Evidence Check:* Every question must cite verifiable evidence from the source lecture text.
+   - *Threshold Guard:* If generated question quality falls below acceptance threshold, existing questions are preserved.
 
 ### G. Test Bank Management System
 - Teachers can store, tag, and categorize high-performing questions.
@@ -129,7 +137,7 @@ Reviso enforces strict Role-Based Access Control (RBAC) and program-specific rou
 - **Registration Flow:** New signups land in `status = 'pending'`.
 - **Approval Queue:** Admins approve/reject users with assigned programs (`psych`, `educ`, `accountancy`).
 - **Deactivation with Reason:** Admins can deactivate accounts with mandatory reason logs for auditability.
-- **AI Key Delegation:** Superadmin manages global Gemini keys; Admins can configure class-level overrides.
+- **AI Key Delegation:** Superadmin manages global Cloudflare AI keys; Admins can configure class-level overrides.
 
 ---
 
@@ -149,7 +157,7 @@ Reviso enforces strict Role-Based Access Control (RBAC) and program-specific rou
 | `TestBankQuestion` | `test_bank_questions` | Reusable master question repository with topic and difficulty tags. |
 | `HistoricalBoardExamResult` | `historical_board_exam_results` | Official PRC board exam benchmarks by program and year. |
 | `Announcement` | `announcements` | Class announcements with auto-unpinning of previous posts. |
-| `AiSetting` | `ai_settings` | Global and class-level Gemini API configurations. |
+| `AiSetting` | `ai_settings` | Global and class-level Cloudflare Workers AI configurations and prompts. |
 
 ---
 
@@ -217,8 +225,10 @@ SESSION_LIFETIME=120
 CACHE_STORE=database
 QUEUE_CONNECTION=sync
 
-# AI Configuration (Insert your Google Gemini API Key)
-GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+# Cloudflare Workers AI Credentials
+CLOUDFLARE_ACCOUNT_ID=YOUR_CLOUDFLARE_ACCOUNT_ID
+CLOUDFLARE_API_TOKEN=YOUR_CLOUDFLARE_API_TOKEN
+CLOUDFLARE_AI_GATEWAY=YOUR_CLOUDFLARE_AI_GATEWAY_OPTIONAL
 ```
 
 ---
@@ -261,7 +271,9 @@ Once the deployment shows a green checkmark, open the generated domain to start 
 | `DB_USERNAME` | Database username | `${{MySQL.MYSQLUSER}}` |
 | `DB_PASSWORD` | Database password | `${{MySQL.MYSQLPASSWORD}}` |
 | `SESSION_DRIVER` | Session storage driver | `database` |
-| `GEMINI_API_KEY` | Google Gemini API Key | `AIzaSy...` |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID | Your Cloudflare ID |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare Workers AI Token | Your API Bearer Token |
+| `CLOUDFLARE_AI_GATEWAY` | Cloudflare AI Gateway Name | Optional gateway slug |
 
 ---
 
