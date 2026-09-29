@@ -1416,10 +1416,9 @@ function renderTopStudents(newItems) {
                     <span class="sp-score-pill ${pillClass}">${avg.toFixed(1)}%</span>
                 </td>
                 <td style="text-align:right">
-                    <button class="sp-refresh-btn sp-analysis-btn" type="button"
-                        onclick="openItemAnalysis(${studentId}, '${safeName}')">
-                        <i class="fas fa-chart-bar"></i> Analysis
-                    </button>
+                    <span style="font-size:12px; color:#94a3b8; font-style:italic;" title="Item analysis is disabled for Pre-Test">
+                        <i class="fas fa-ban" style="font-size:10px;margin-right:2px;"></i> Disabled for Pre-Test
+                    </span>
                 </td>
             </tr>
         `;
@@ -1886,6 +1885,10 @@ document.querySelectorAll('.js-class-tab').forEach(function (tab) {
 
 /* ITEM ANALYSIS DIALOG */
 async function openItemAnalysis(studentId, studentName, isAssessment) {
+    if (!isAssessment) {
+        alert('Item analysis is disabled for Pre-Test (Diagnostic Assessment). It is available on Formal Assessment / Post-Test phases.');
+        return;
+    }
     const dialog    = document.getElementById('itemAnalysisDialog');
     const nameEl    = document.getElementById('iaStudentName');
     const metaEl    = document.getElementById('iaDialogMeta');

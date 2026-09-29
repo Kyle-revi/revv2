@@ -469,7 +469,7 @@ class MockBoardStatisticsService
             ];
         }
 
-        $activePhase = $phaseId ? $phases->firstWhere('id', $phaseId) : $phases->first();
+        $activePhase = $phaseId ? $phases->firstWhere('id', $phaseId) : ($phases->firstWhere('phase_type', '!=', 'pre_test') ?? $phases->first());
         if (! $activePhase) {
             $activePhase = $phases->first();
         }
