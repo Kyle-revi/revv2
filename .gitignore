@@ -1,6 +1,9 @@
 .DS_Store
 cacert.pem
 .env
+.env.*
+.phpunit.result.cache
 node_modules/
 *.log
+
 
