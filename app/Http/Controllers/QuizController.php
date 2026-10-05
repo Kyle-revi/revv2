@@ -109,13 +109,32 @@ class QuizController extends Controller
         $clean = preg_replace('/\bThe student\b/i', 'You', $clean);
         $clean = preg_replace('/\bThe learner\b/i', 'You', $clean);
 
-        // Fix grammar artifacts from replacements (e.g. "You has grasped" -> "You have grasped")
+        // Fix grammar artifacts from replacements (e.g. "You has grasped" -> "You have grasped", "You needs" -> "You need")
         $clean = preg_replace('/\bYou has\b/i', 'You have', $clean);
         $clean = preg_replace('/\bYou was\b/i', 'You were', $clean);
+        $clean = preg_replace('/\bYou needs\b/i', 'You need', $clean);
+        $clean = preg_replace('/\bYou struggles\b/i', 'You struggle', $clean);
+        $clean = preg_replace('/\bYou confuses\b/i', 'You confuse', $clean);
+        $clean = preg_replace('/\bYou demonstrates\b/i', 'You demonstrate', $clean);
+        $clean = preg_replace('/\bYou shows\b/i', 'You show', $clean);
+        $clean = preg_replace('/\bYou requires\b/i', 'You require', $clean);
+        $clean = preg_replace('/\bYou selects\b/i', 'You select', $clean);
+        $clean = preg_replace('/\bYou chooses\b/i', 'You choose', $clean);
+        $clean = preg_replace('/\bYou fails\b/i', 'You fail', $clean);
+        $clean = preg_replace('/\bYou tends\b/i', 'You tend', $clean);
+        $clean = preg_replace('/\bYou understands\b/i', 'You understand', $clean);
+        $clean = preg_replace('/\bYou identifies\b/i', 'You identify', $clean);
+        $clean = preg_replace('/\bYou applies\b/i', 'You apply', $clean);
         $clean = preg_replace('/\bthey (have shown|have|struggled|showed|demonstrated|selected|scored|need)\b/i', 'you $1', $clean);
-        $clean = preg_replace('/\btheir (understanding|performance|score|answers?|knowledge|comprehension|foundation|mistakes?)\b/i', 'your $1', $clean);
-        $clean = preg_replace('/\b(help|guide|allow) them\b/i', '$1 you', $clean);
+        $clean = preg_replace('/\btheir (understanding|performance|score|answers?|knowledge|comprehension|foundation|mistakes?|assessments?)\b/i', 'your $1', $clean);
+        $clean = preg_replace('/\b(help|guide|allow|enable|let)\s+them\b/i', '$1 you', $clean);
+        $clean = preg_replace('/\b(help|guide|allow|enable|let|for|with|to)\s+You\b/', '$1 you', $clean);
         $clean = preg_replace('/\bfor them to\b/i', 'for you to', $clean);
+
+        // Safeguard against factual reversals on negative questions
+        $clean = preg_replace('/\bunderstanding the correct principle of assessing behavior in isolation\b/i', 'understanding the distinction between isolated and systemic behavior assessment', $clean);
+        $clean = preg_replace('/\bcorrect principle of assessing behavior in isolation\b/i', 'principle of assessing behavior in relation to systemic factors', $clean);
+        $clean = preg_replace('/\bprinciple of assessing behavior in isolation\b/i', 'principle of assessing behavior in relation to systemic factors', $clean);
 
         // Ensure "You" / "Your" is capitalized at the start of sentences
         $clean = preg_replace('/(?<=(?:\.|\?|\!)\s|\n|^)you\b/', 'You', $clean);
@@ -337,7 +356,7 @@ class QuizController extends Controller
         $weakBulletCount = substr_count((string) $attempt->ai_weak, "\n- ") + (str_starts_with(trim((string) $attempt->ai_weak), '- ') ? 1 : 0);
         $hasExcessiveBullets = $weakBulletCount > 3;
 
-        $hasReversedFactOrGrammarQuirk = preg_match('/\b(?:You has|You was|disorders are expected in their cultural context|cultural norms are universal and absolute)\b/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak.' '.(string) $attempt->ai_recommendation);
+        $hasReversedFactOrGrammarQuirk = preg_match('/\b(?:You has|You was|You needs|assessing behavior in isolation|disorders are expected in their cultural context|cultural norms are universal and absolute)\b/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak.' '.(string) $attempt->ai_recommendation);
         $hasVerbatimQuestionQuotes = preg_match('/(?:to the question|in the question)\s*"[^"]+"/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak);
 
         $hasLegacyHallucinations = $attempt->ai_strong !== null && (
@@ -376,11 +395,20 @@ class QuizController extends Controller
                 $options = is_array($a->question->options) ? $a->question->options : (json_decode($a->question->options ?? '[]', true) ?: []);
                 $selectedText = $options[$a->selected_option] ?? "Option {$a->selected_option}";
                 $correctText = $options[$a->question->correct_option] ?? "Option {$a->question->correct_option}";
+                $isNegativeStem = (bool) preg_match('/\b(?:NOT|EXCEPT|LEAST|INCORRECT|FALSE|UNTRUE)\b/i', $qText);
 
                 if ($a->is_correct) {
-                    $correctItems[] = "• Concept: \"{$qText}\" (Correct principle: \"{$correctText}\")";
+                    if ($isNegativeStem) {
+                        $correctItems[] = "• Concept: \"{$qText}\" (You correctly identified the FALSE statement on test: \"{$correctText}\")";
+                    } else {
+                        $correctItems[] = "• Concept: \"{$qText}\" (Correct principle: \"{$correctText}\")";
+                    }
                 } else {
-                    $incorrectItems[] = "• Concept: \"{$qText}\" (Selected choice: \"{$selectedText}\" | Accurate principle: \"{$correctText}\")";
+                    if ($isNegativeStem) {
+                        $incorrectItems[] = "• Concept: \"{$qText}\" (Selected: \"{$selectedText}\" | The false statement on test was: \"{$correctText}\")";
+                    } else {
+                        $incorrectItems[] = "• Concept: \"{$qText}\" (Selected choice: \"{$selectedText}\" | Accurate principle: \"{$correctText}\")";
+                    }
                 }
             }
 
