@@ -92,7 +92,7 @@ class QuizController extends Controller
         return ['strong' => $strong, 'weak' => $weak, 'recommendation' => $recommendation];
     }
 
-    private function sanitizeInsightText(string $text): string
+    private function sanitizeInsightText(string $text, ?int $maxBullets = null): string
     {
         // 1. Remove parenthetical citations: (APA, 2020), (APA, 2020, p. 123), (Wampold, 2001, p. 12), (Triandis, 1995), (p. 145), etc.
         $clean = preg_replace('/\s*\((?:[A-Za-z\s&.,]+,\s*(?:19|20)\d{2}(?:,\s*p{1,2}\.?\s*\d+)?|(?:p|pp)\.?\s*\d+)\)/i', '', $text);
@@ -117,6 +117,40 @@ class QuizController extends Controller
         $clean = preg_replace('/\s+\./', '.', $clean);
         $clean = preg_replace('/[ \t]+/', ' ', $clean);
 
+        // 6. Strip trailing conversational chatter like "Actionable Next Study Step: ..."
+        $clean = preg_replace('/(?:\r?\n)\s*(?:Actionable\s+Next\s+Study\s+Step|Next\s+Step|Note)\s*:\s*.*$/is', '', $clean);
+
+        // 7. Enforce hard cap on number of bullet / numbered items
+        if ($maxBullets !== null && $maxBullets > 0) {
+            $lines = preg_split('/\r?\n/', trim($clean));
+            $collected = [];
+            $count = 0;
+            foreach ($lines as $line) {
+                $trimmed = trim($line);
+                if ($trimmed === '') {
+                    continue;
+                }
+                $isItem = preg_match('/^(?:[-*]|\d+\.)\s+/', $trimmed);
+                if ($isItem) {
+                    if ($count >= $maxBullets) {
+                        break;
+                    }
+                    $collected[] = $trimmed;
+                    $count++;
+                } else {
+                    if ($count === 0) {
+                        $collected[] = $trimmed;
+                    } elseif ($count <= $maxBullets) {
+                        $lastIdx = count($collected) - 1;
+                        if ($lastIdx >= 0) {
+                            $collected[$lastIdx] .= ' '.$trimmed;
+                        }
+                    }
+                }
+            }
+            $clean = implode("\n", $collected);
+        }
+
         return trim($clean);
     }
 
@@ -135,9 +169,9 @@ class QuizController extends Controller
                 $r = $json['recommendation'] ?? $json['recommendations'] ?? $json['Recommendation'] ?? null;
                 if ($s || $w || $r) {
                     return [
-                        'strong' => $this->sanitizeInsightText(is_array($s) ? implode("\n", $s) : (string) ($s ?? '')),
-                        'weak' => $this->sanitizeInsightText(is_array($w) ? implode("\n", $w) : (string) ($w ?? '')),
-                        'recommendation' => $this->sanitizeInsightText(is_array($r) ? implode("\n", $r) : (string) ($r ?? '')),
+                        'strong' => $this->sanitizeInsightText(is_array($s) ? implode("\n", $s) : (string) ($s ?? ''), 2),
+                        'weak' => $this->sanitizeInsightText(is_array($w) ? implode("\n", $w) : (string) ($w ?? ''), 3),
+                        'recommendation' => $this->sanitizeInsightText(is_array($r) ? implode("\n", $r) : (string) ($r ?? ''), 3),
                     ];
                 }
             }
@@ -164,9 +198,9 @@ class QuizController extends Controller
         }
 
         return [
-            'strong' => ! empty($strong) ? $this->sanitizeInsightText($strong) : null,
-            'weak' => ! empty($weak) ? $this->sanitizeInsightText($weak) : null,
-            'recommendation' => ! empty($recommendation) ? $this->sanitizeInsightText($recommendation) : null,
+            'strong' => ! empty($strong) ? $this->sanitizeInsightText($strong, 2) : null,
+            'weak' => ! empty($weak) ? $this->sanitizeInsightText($weak, 3) : null,
+            'recommendation' => ! empty($recommendation) ? $this->sanitizeInsightText($recommendation, 3) : null,
         ];
     }
 
@@ -272,11 +306,15 @@ class QuizController extends Controller
             ]);
         }
 
+        $weakBulletCount = substr_count((string) $attempt->ai_weak, "\n- ") + (str_starts_with(trim((string) $attempt->ai_weak), '- ') ? 1 : 0);
+        $hasExcessiveBullets = $weakBulletCount > 3;
+
         $hasLegacyHallucinations = $attempt->ai_strong !== null && (
             preg_match('/\((?:APA|DSM|Barlow|Wampold|Triandis|Kessler|Hart|Hooley|[A-Za-z\s&.,]+,\s*(?:19|20)\d{2})/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || preg_match('/\bp\.\s*\d+/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || preg_match('/\bThe student (?:demonstrated|incorrectly|showed|selected|stated)\b/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || preg_match('/(?:^|\n)[-*\s]*Item\s*\d+\s*:/i', $attempt->ai_strong.' '.$attempt->ai_weak)
+            || $hasExcessiveBullets
         );
 
         if ($attempt->ai_strong !== null && ! $hasLegacyHallucinations) {
@@ -313,12 +351,20 @@ class QuizController extends Controller
                 }
             }
 
-            $answersContext = '';
-            if (! empty($correctItems)) {
-                $answersContext .= "CONCEPTS DEMONSTRATED CORRECTLY:\n".implode("\n", $correctItems)."\n\n";
+            $sampleCorrect = array_slice($correctItems, 0, 4);
+            $sampleIncorrect = array_slice($incorrectItems, 0, 6);
+
+            $totalCount = $answers->count();
+            $scoreCount = $attempt->score;
+            $missedCount = max(0, $totalCount - $scoreCount);
+
+            $answersContext = "Performance Stats: Total {$totalCount} Questions | Correct: {$scoreCount} | Missed: {$missedCount}\n\n";
+
+            if (! empty($sampleCorrect)) {
+                $answersContext .= "REPRESENTATIVE CONCEPTS ANSWERED CORRECTLY:\n".implode("\n", $sampleCorrect)."\n\n";
             }
-            if (! empty($incorrectItems)) {
-                $answersContext .= "CONCEPTS MISSED (STUDENT NEEDS CLARIFICATION):\n".implode("\n", $incorrectItems);
+            if (! empty($sampleIncorrect)) {
+                $answersContext .= "REPRESENTATIVE CONCEPTS MISSED (Synthesize these into 2-3 core thematic weaknesses):\n".implode("\n", $sampleIncorrect);
             }
 
             $userPrompt = $resolver->renderTemplate($resolver->getPromptTemplate('quiz_insights', 'user_template'), [

@@ -276,4 +276,72 @@ class QuizInsightsTest extends TestCase
         $attempt->refresh();
         $this->assertSame('- **Protective Factors:** You demonstrated solid understanding.', $attempt->ai_strong);
     }
+
+    public function test_generate_insights_caps_bullets_to_maximum_three_items(): void
+    {
+        $module = Module::factory()->create([
+            'class_id' => $this->class->id,
+            'is_quiz' => true,
+            'is_formal_assessment' => false,
+        ]);
+
+        $attempt = QuizAttempt::create([
+            'user_id' => $this->student->id,
+            'module_id' => $module->id,
+            'score' => 1,
+            'total' => 10,
+            'percentage' => 10,
+            'passed' => false,
+        ]);
+
+        $question = QuizQuestion::create([
+            'module_id' => $module->id,
+            'question_text' => 'What is abnormal behavior?',
+            'options' => ['A' => 'A', 'B' => 'B', 'C' => 'C', 'D' => 'D'],
+            'correct_option' => 'A',
+            'points' => 1,
+            'order' => 1,
+            'difficulty' => 'Normal',
+        ]);
+
+        QuizAnswer::create([
+            'attempt_id' => $attempt->id,
+            'question_id' => $question->id,
+            'selected_option' => 'B',
+            'is_correct' => false,
+        ]);
+
+        // Mock an AI response that produces 9 bullets in weak areas and 9 in recommendation
+        $excessiveResponse = "Strong Areas:\n- **Theme 1:** Mastered concept.\n- **Theme 2:** Mastered concept.\n- **Theme 3:** Too many.\n\nWeak Areas:\n- Misunderstanding 1\n- Misunderstanding 2\n- Misunderstanding 3\n- Misunderstanding 4\n- Misunderstanding 5\n- Misunderstanding 6\n- Misunderstanding 7\n- Misunderstanding 8\n- Misunderstanding 9\n\nRecommendation:\n1. Step 1\n2. Step 2\n3. Step 3\n4. Step 4\n5. Step 5\n6. Step 6\n7. Step 7\n8. Step 8\n9. Step 9\n\nActionable Next Study Step: Extra chatter to strip.";
+
+        $this->app->instance('App\\Services\\CloudflareAI', new class($excessiveResponse) extends CloudflareAI
+        {
+            public function __construct(private string $response = '') {}
+
+            public function run(string $model, array $payload): array
+            {
+                return ['response' => $this->response];
+            }
+        });
+
+        $res = $this->actingAs($this->student)
+            ->postJson(route('quiz.insights', $module))
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $weak = (string) $res->json('weak');
+        $strong = (string) $res->json('strong');
+        $rec = (string) $res->json('recommendation');
+
+        // Strong should have at most 2 bullets
+        $this->assertStringNotContainsString('Theme 3', $strong);
+        // Weak should have at most 3 bullets
+        $this->assertStringContainsString('Misunderstanding 3', $weak);
+        $this->assertStringNotContainsString('Misunderstanding 4', $weak);
+        // Recommendation should have at most 3 numbered items
+        $this->assertStringContainsString('3. Step 3', $rec);
+        $this->assertStringNotContainsString('4. Step 4', $rec);
+        // Extra chatter should be stripped
+        $this->assertStringNotContainsString('Actionable Next Study Step', $rec);
+    }
 }
