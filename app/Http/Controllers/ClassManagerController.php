@@ -1331,13 +1331,14 @@ class ClassManagerController extends Controller
         }
 
         // Load completed quiz attempts so the view can show locked results.
-        $quizModuleIds = $modules->where('is_quiz', true)->pluck('id');
+        $quizModuleIds = $modules->filter(fn ($m) => (bool) $m->is_quiz || (bool) $m->is_formal_assessment || ! empty($m->quiz_stage))->pluck('id');
         $quizAttempts = [];
 
         if ($quizModuleIds->isNotEmpty()) {
             QuizAttempt::where('user_id', $user->id)
                 ->whereIn('module_id', $quizModuleIds)
                 ->where('total', '>', 0)
+                ->orderBy('attempt_count', 'asc')
                 ->get()
                 ->each(function (QuizAttempt $attempt) use (&$quizAttempts) {
                     $attemptData = [
@@ -1373,18 +1374,29 @@ class ClassManagerController extends Controller
                 ->get()
                 ->keyBy('module_id');
 
+            $attemptCounts = QuizAttempt::where('user_id', $user->id)
+                ->whereIn('module_id', $formalModuleIds)
+                ->groupBy('module_id')
+                ->selectRaw('module_id, MAX(attempt_count) as max_attempt')
+                ->pluck('max_attempt', 'module_id');
+
             foreach ($formalModules as $formalModule) {
                 $baseMax = $formalModule->max_attempts ?? 1;
-                $extra = $grants->get($formalModule->id)?->extra_attempts ?? 0;
-                $used = $quizAttempts[$formalModule->id]['attempt_count'] ?? 0;
+                $extra = (int) ($grants->get($formalModule->id)?->extra_attempts ?? 0);
+                $used = (int) ($attemptCounts->get($formalModule->id) ?? ($quizAttempts[$formalModule->id]['attempt_count'] ?? 0));
 
+                $totalAllowed = $baseMax + $extra;
                 $attemptLimits[$formalModule->id] = [
                     'base_max' => $baseMax,
+                    'base_max_attempts' => $baseMax,
                     'extra_granted' => $extra,
-                    'total_allowed' => $baseMax + $extra,
+                    'extra_attempts_granted' => $extra,
+                    'total_allowed' => $totalAllowed,
+                    'attempts_allowed' => $totalAllowed,
                     'used' => $used,
-                    'remaining' => max(0, ($baseMax + $extra) - $used),
-                    'can_attempt' => $used < ($baseMax + $extra),
+                    'attempts_used' => $used,
+                    'remaining' => max(0, $totalAllowed - $used),
+                    'can_attempt' => $used < $totalAllowed,
                 ];
             }
         }

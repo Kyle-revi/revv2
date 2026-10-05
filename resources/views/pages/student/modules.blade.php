@@ -881,8 +881,8 @@
         if (!limit) {
             return 'Multiple attempts allowed for practice.';
         }
-        const allowed = limit.attempts_allowed || limit.base_max_attempts || 1;
-        const used = limit.attempts_used || 0;
+        const allowed = limit.total_allowed || limit.attempts_allowed || limit.base_max || limit.base_max_attempts || 1;
+        const used = (typeof limit.used !== 'undefined') ? limit.used : (limit.attempts_used || 0);
         const remaining = Math.max(0, allowed - used);
         if (allowed === 1) {
             return 'You only have 1 attempt for this assessment.';
@@ -1813,6 +1813,13 @@
         // para sa formal assessments (Pre-Test, Post-Test, Mock Board).
         $.post(`/modules/${moduleId}/quiz/start`, startPayload)
             .done(function (startRes) {
+                if (attemptLimits && attemptLimits[moduleId] && startRes && startRes.attempt_count) {
+                    attemptLimits[moduleId].used = startRes.attempt_count;
+                    attemptLimits[moduleId].attempts_used = startRes.attempt_count;
+                    const tot = attemptLimits[moduleId].total_allowed || attemptLimits[moduleId].attempts_allowed || 1;
+                    attemptLimits[moduleId].remaining = Math.max(0, tot - startRes.attempt_count);
+                    attemptLimits[moduleId].can_attempt = startRes.attempt_count < tot;
+                }
                 renderQuizShell(moduleId, mod);
 
                 if (isFormalAssessment) {
@@ -2026,6 +2033,13 @@
             .then((res) => {
                 if (res && res.attempt_count) { savedAttemptCount = res.attempt_count; }
                 if (res && res.attempt_id) { savedAttemptId = res.attempt_id; }
+                if (attemptLimits && attemptLimits[currentModuleId] && savedAttemptCount) {
+                    attemptLimits[currentModuleId].used = savedAttemptCount;
+                    attemptLimits[currentModuleId].attempts_used = savedAttemptCount;
+                    const tot = attemptLimits[currentModuleId].total_allowed || attemptLimits[currentModuleId].attempts_allowed || 1;
+                    attemptLimits[currentModuleId].remaining = Math.max(0, tot - savedAttemptCount);
+                    attemptLimits[currentModuleId].can_attempt = savedAttemptCount < tot;
+                }
             })
             .then(() => new Promise(resolve => setTimeout(resolve, 300)))
             .then(() => {
@@ -2215,6 +2229,75 @@
         `;
     }
 
+    function buildRetakeButtonHtml(targetModuleId, currentAttemptCount = 1) {
+        const mod = modules.find(m => m.id == targetModuleId);
+        if (!mod) return '';
+
+        const av = availabilityMap[targetModuleId] || {};
+        if (av.is_closed || av.is_inactive) {
+            return `
+                <span class="qz-btn qz-btn-disabled" style="background:#f1f5f9; color:#94a3b8; border:1px solid #e2e8f0; cursor:not-allowed;" title="This assessment is closed or inactive.">
+                    <i class="fas fa-lock"></i> Closed
+                </span>
+            `;
+        }
+
+        const isFormal = Boolean(mod.is_formal_assessment || mod.quiz_stage || mod.assessment_purpose);
+        if (!isFormal) {
+            return `
+                <button type="button" class="qz-btn qz-btn-primary" onclick="retakeQuiz(${targetModuleId})" style="background:#2563eb; color:#fff; border-color:#2563eb; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-redo"></i> Retake Quiz
+                </button>
+            `;
+        }
+
+        const limit = attemptLimits && attemptLimits[targetModuleId];
+        const allowed = limit ? (limit.total_allowed || limit.attempts_allowed || limit.base_max || limit.base_max_attempts || 1) : (mod.max_attempts || 1);
+        const used = limit ? (typeof limit.used !== 'undefined' ? limit.used : (limit.attempts_used ?? currentAttemptCount)) : currentAttemptCount;
+        const canRetake = used < allowed;
+        const nextAttempt = used + 1;
+
+        if (canRetake) {
+            return `
+                <button type="button" class="qz-btn qz-btn-primary" id="qzRetakeBtn" onclick="retakeQuiz(${targetModuleId})" style="background:#2563eb; color:#fff; border-color:#2563eb; font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fas fa-redo"></i> Retake Assessment (${nextAttempt} of ${allowed})
+                </button>
+            `;
+        }
+
+        return `
+            <span class="qz-btn qz-btn-disabled" id="qzRetakeBtn" style="background:#f1f5f9; color:#94a3b8; border:1px solid #e2e8f0; cursor:not-allowed;" title="All attempts used. Contact your instructor if you need an additional attempt.">
+                <i class="fas fa-ban"></i> Attempts Used Up (${used}/${allowed})
+            </span>
+        `;
+    }
+
+    function retakeQuiz(moduleId) {
+        const mod = modules.find(m => m.id == moduleId);
+        if (!mod) return;
+
+        if (mod.is_formal_assessment) {
+            const limit = attemptLimits && attemptLimits[moduleId];
+            const allowed = limit ? (limit.total_allowed || limit.attempts_allowed || 1) : (mod.max_attempts || 1);
+            const used = limit ? (typeof limit.used !== 'undefined' ? limit.used : (limit.attempts_used || 0)) : 0;
+            const nextAttempt = used + 1;
+            if (!confirm(`Are you ready to begin Attempt ${nextAttempt} of ${allowed}?`)) {
+                return;
+            }
+        }
+
+        currentQuizQuestions = [];
+        currentQIndex = 0;
+        answeredQuestions = new Set();
+        selectedAnswers = {};
+
+        if (!quizRenderTarget || quizRenderTarget === '#modContent') {
+            quizRenderTarget = (mod.is_lecture || (mod.subparts && mod.subparts.length > 0)) ? '#lecStageArea' : '#modContent';
+        }
+
+        beginQuizFlow(moduleId);
+    }
+
     function showResult(pct, score, total, isLocked = false, attemptCount = 1, cachedInsights = null) {
         const passed  = pct >= 50;
         const color   = passed ? '#1d9e75' : '#e24b4a';
@@ -2224,6 +2307,8 @@
         const aiHtml = cachedInsights && (cachedInsights.strong || cachedInsights.weak || cachedInsights.recommendation)
             ? renderAiInsightsCard(cachedInsights.strong, cachedInsights.weak, cachedInsights.recommendation)
             : renderAiInsightsLoading();
+
+        const retakeBtnHtml = buildRetakeButtonHtml(currentModuleId, attemptCount);
 
         $(quizRenderTarget).html(`
             <div class="qz-result">
@@ -2250,8 +2335,9 @@
                     <p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>
                     <p class="qz-history-empty">Loading history...</p>
                 </div>
-                <div class="qz-result-btns">
+                <div class="qz-result-btns" id="qzResultBtns">
                     <button class="qz-btn qz-btn-outline" onclick="quizBackHandler()"><i class="fas fa-arrow-left"></i> Back</button>
+                    ${retakeBtnHtml}
                 </div>
             </div>
         `);
@@ -2270,6 +2356,17 @@
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
+            if (res.limits) {
+                attemptLimits[targetModuleId] = res.limits;
+                const resultBtns = document.getElementById('qzResultBtns');
+                if (resultBtns) {
+                    const freshRetakeHtml = buildRetakeButtonHtml(targetModuleId, res.limits.used || 1);
+                    resultBtns.innerHTML = `
+                        <button class="qz-btn qz-btn-outline" onclick="quizBackHandler()"><i class="fas fa-arrow-left"></i> Back</button>
+                        ${freshRetakeHtml}
+                    `;
+                }
+            }
             var box = document.getElementById('historyBox');
             if (!box) { return; }
             if (res.success && res.attempts && res.attempts.length) {

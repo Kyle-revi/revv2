@@ -904,9 +904,25 @@ class QuizController extends Controller
                 'completed_at',
             ]);
 
+        $baseMax = $module->max_attempts ?? 1;
+        $allowed = $this->getAllowedAttempts($module, $user->id);
+        $used = $snapshots->max('attempt_number')
+            ?? QuizAttempt::where('user_id', $user->id)->where('module_id', $module->id)->max('attempt_count')
+            ?? 0;
+
         return response()->json([
             'success' => true,
             'attempts' => $snapshots,
+            'limits' => [
+                'base_max' => $baseMax,
+                'base_max_attempts' => $baseMax,
+                'total_allowed' => $allowed,
+                'attempts_allowed' => $allowed,
+                'used' => (int) $used,
+                'attempts_used' => (int) $used,
+                'remaining' => max(0, $allowed - (int) $used),
+                'can_attempt' => (int) $used < $allowed,
+            ],
         ]);
     }
 

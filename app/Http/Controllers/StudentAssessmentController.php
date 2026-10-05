@@ -61,7 +61,7 @@ class StudentAssessmentController extends Controller
             ->get()
             ->each(function (Module $module) use ($user) {
                 $module->student_attempt = $module->attempts->first();
-                $module->attempts_used = $module->student_attempt?->attempt_count ?? 0;
+                $module->attempts_used = (int) ($module->attempts->max('attempt_count') ?? ($module->student_attempt?->attempt_count ?? 0));
                 $module->attempts_allowed = $module->allowedAttemptsFor($user->id);
                 $module->is_upcoming = $module->isUpcoming();
                 $module->is_open = $module->isOpen();
@@ -105,7 +105,7 @@ class StudentAssessmentController extends Controller
             ->where('module_id', $module->id)
             ->orderByDesc('percentage')
             ->first();
-        $attempts_used = $attempt?->attempt_count ?? 0;
+        $attempts_used = (int) (QuizAttempt::where('user_id', $user->id)->where('module_id', $module->id)->max('attempt_count') ?? ($attempt?->attempt_count ?? 0));
         $attempts_allowed = $module->allowedAttemptsFor($user->id);
         $is_resuming = $attempt?->status === 'in_progress';
         $can_start_attempt = $is_resuming || $attempts_used < $attempts_allowed;
