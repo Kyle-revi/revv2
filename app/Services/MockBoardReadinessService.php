@@ -261,11 +261,16 @@ class MockBoardReadinessService
         }
 
         $sortedByPost = collect($breakdown)->sortBy('post_score')->values();
-        $weakestDomain = $sortedByPost->first()['domain'] ?? 'N/A';
+
+        // Priority Focus Area (weakest domain): only assign if there is a domain below 100%
+        $domainsBelow100 = $sortedByPost->filter(fn ($d) => ($d['post_score'] ?? 0) < 100)->values();
+        $weakestDomain = $domainsBelow100->isNotEmpty() ? $domainsBelow100->first()['domain'] : null;
+
         $strongestDomain = $sortedByPost->last()['domain'] ?? 'N/A';
 
-        $sortedByGrowth = collect($breakdown)->filter(fn ($d) => $d['change'] !== null)->sortByDesc('change')->values();
-        $mostImprovedDomain = $sortedByGrowth->first()['domain'] ?? 'N/A';
+        // Highest Improvement: only assign if change is positive (> 0)
+        $sortedByGrowth = collect($breakdown)->filter(fn ($d) => $d['change'] !== null && $d['change'] > 0)->sortByDesc('change')->values();
+        $mostImprovedDomain = $sortedByGrowth->first()['domain'] ?? null;
 
         return [
             'list' => $breakdown,
@@ -425,6 +430,7 @@ class MockBoardReadinessService
 
             if (empty($weakestDomains)) {
                 $weakestDomains = collect($reportData['domains']['list'] ?? [])
+                    ->filter(fn ($d) => ($d['post_score'] ?? 0) < 100)
                     ->sortBy('post_score')
                     ->pluck('domain')
                     ->take(2)
@@ -528,6 +534,7 @@ class MockBoardReadinessService
 
         if (empty($weakDomains)) {
             $weakDomains = collect($reportData['domains']['list'] ?? [])
+                ->filter(fn ($d) => ($d['post_score'] ?? 0) < 100)
                 ->sortBy('post_score')
                 ->take(2)
                 ->pluck('domain')

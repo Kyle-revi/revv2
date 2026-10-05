@@ -197,16 +197,34 @@
                 </div>
 
                 <div class="domain-summary-highlights">
+                    @php
+                        $weakDomainName = $domains['weakest_domain'] ?? null;
+                        $hasWeakDomain = !empty($weakDomainName) && $weakDomainName !== 'N/A';
+                        if ($hasWeakDomain && !empty($domains['list'])) {
+                            $weakItem = collect($domains['list'])->firstWhere('domain', $weakDomainName);
+                            if ($weakItem && ($weakItem['post_score'] ?? 0) >= 100) {
+                                $hasWeakDomain = false;
+                            }
+                        }
+                        $allPerfect = !empty($domains['list']) && collect($domains['list'])->every(fn($d) => ($d['post_score'] ?? 0) >= 100);
+                    @endphp
+
                     @if(!empty($domains['most_improved_domain']) && $domains['most_improved_domain'] !== 'N/A')
                         <div class="highlight-pill positive">
                             <i class="fas fa-arrow-trend-up"></i>
                             <span>Highest Improvement: <strong>{{ $domains['most_improved_domain'] }}</strong></span>
                         </div>
                     @endif
-                    @if(!empty($domains['weakest_domain']) && $domains['weakest_domain'] !== 'N/A')
+
+                    @if($hasWeakDomain)
                         <div class="highlight-pill negative">
                             <i class="fas fa-bullseye"></i>
-                            <span>Priority Focus Area: <strong>{{ $domains['weakest_domain'] }}</strong></span>
+                            <span>Priority Focus Area: <strong>{{ $weakDomainName }}</strong></span>
+                        </div>
+                    @elseif($allPerfect)
+                        <div class="highlight-pill positive">
+                            <i class="fas fa-check-circle"></i>
+                            <span>All Domains Mastered (100%)</span>
                         </div>
                     @endif
                 </div>

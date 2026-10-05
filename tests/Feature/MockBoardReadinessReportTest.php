@@ -469,4 +469,84 @@ class MockBoardReadinessReportTest extends TestCase
         $response->assertSee('View Readiness Report');
         $response->assertSee(route('student.mock-boards.readiness', $board));
     }
+
+    public function test_all_100_percent_domains_do_not_produce_priority_focus_area(): void
+    {
+        $data = $this->createBoardAndStudent();
+        $student = $data['student'];
+        $board = $data['board'];
+
+        $qAudit = QuizQuestion::create([
+            'module_id' => $data['preTestModule']->id,
+            'question_text' => 'Auditing Question 1',
+            'domain' => 'Auditing and Assurance',
+            'correct_option' => 'A',
+            'options' => ['A' => 'Correct', 'B' => 'Wrong'],
+        ]);
+
+        $qFar = QuizQuestion::create([
+            'module_id' => $data['preTestModule']->id,
+            'question_text' => 'FAR Question 1',
+            'domain' => 'Financial Accounting and Reporting',
+            'correct_option' => 'A',
+            'options' => ['A' => 'Correct', 'B' => 'Wrong'],
+        ]);
+
+        $preQuizAttempt = QuizAttempt::create([
+            'user_id' => $student->id,
+            'module_id' => $data['preTestModule']->id,
+            'mock_board_id' => $board->id,
+            'score' => 2,
+            'total' => 2,
+            'percentage' => 100,
+            'passed' => true,
+            'status' => 'completed',
+        ]);
+        QuizAnswer::create(['attempt_id' => $preQuizAttempt->id, 'question_id' => $qAudit->id, 'selected_option' => 'A', 'is_correct' => true]);
+        QuizAnswer::create(['attempt_id' => $preQuizAttempt->id, 'question_id' => $qFar->id, 'selected_option' => 'A', 'is_correct' => true]);
+
+        MockBoardAttempt::create([
+            'user_id' => $student->id,
+            'mock_board_id' => $board->id,
+            'mock_board_phase_id' => $data['preTestPhase']->id,
+            'phase_type' => 'pre_test',
+            'quiz_attempt_id' => $preQuizAttempt->id,
+            'score' => 2,
+            'total' => 2,
+            'percentage' => 100,
+            'passed' => true,
+            'attempt_count' => 1,
+        ]);
+
+        $postQuizAttempt = QuizAttempt::create([
+            'user_id' => $student->id,
+            'module_id' => $data['postTestModule']->id,
+            'mock_board_id' => $board->id,
+            'score' => 2,
+            'total' => 2,
+            'percentage' => 100,
+            'passed' => true,
+            'status' => 'completed',
+        ]);
+        QuizAnswer::create(['attempt_id' => $postQuizAttempt->id, 'question_id' => $qAudit->id, 'selected_option' => 'A', 'is_correct' => true]);
+        QuizAnswer::create(['attempt_id' => $postQuizAttempt->id, 'question_id' => $qFar->id, 'selected_option' => 'A', 'is_correct' => true]);
+
+        MockBoardAttempt::create([
+            'user_id' => $student->id,
+            'mock_board_id' => $board->id,
+            'mock_board_phase_id' => $data['postTestPhase']->id,
+            'phase_type' => 'pre_boards',
+            'quiz_attempt_id' => $postQuizAttempt->id,
+            'score' => 2,
+            'total' => 2,
+            'percentage' => 100,
+            'passed' => true,
+            'attempt_count' => 1,
+        ]);
+
+        $response = $this->actingAs($student)->get(route('student.mock-boards.readiness', $board));
+        $response->assertOk();
+        $response->assertDontSee('Priority Focus Area');
+        $response->assertSee('All Domains Mastered (100%)');
+    }
 }
