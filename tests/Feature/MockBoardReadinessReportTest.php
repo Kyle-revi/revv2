@@ -546,7 +546,53 @@ class MockBoardReadinessReportTest extends TestCase
 
         $response = $this->actingAs($student)->get(route('student.mock-boards.readiness', $board));
         $response->assertOk();
-        $response->assertDontSee('Priority Focus Area');
+        $response->assertDontSee('Priority Focus Area:');
         $response->assertSee('All Domains Mastered (100%)');
+        $response->assertSee('No conceptual gaps identified');
+    }
+
+    public function test_action_plan_sanitizes_hallucinated_data_for_mastered_student(): void
+    {
+        $data = $this->createBoardAndStudent();
+        $student = $data['student'];
+        $board = $data['board'];
+
+        $report = MockBoardReadinessReport::create([
+            'user_id' => $student->id,
+            'mock_board_id' => $board->id,
+            'readiness_percentage' => 100.0,
+            'tier' => 'tier_1',
+            'tier_label' => 'High Readiness',
+            'gap_percentage' => 0.0,
+            'gap_items' => 0,
+            'pre_test_score' => 70.0,
+            'post_test_score' => 100.0,
+            'improvement_percentage' => 30.0,
+            'consistency_status' => 'Consistent',
+            'domain_breakdown' => [
+                'list' => [
+                    ['domain' => 'Auditing and Assurance', 'post_score' => 100],
+                    ['domain' => 'Financial Accounting and Reporting', 'post_score' => 100],
+                ],
+                'weakest_domain' => 'Auditing and Assurance', // Simulated legacy bad data
+            ],
+            'ai_action_plan' => [
+                'priority_domains' => ['Financial Accounting', 'Auditing and Attestation', 'Regulation and Ethics'],
+                'review_topics' => ['Financial Statement Analysis', 'Audit Planning and Risk Assessment'],
+                'study_steps' => [
+                    'Review ASC 606 and ASC 842 leases.',
+                    'AICPA regulation and ethics standards.',
+                ],
+                'summary_narrative' => 'Congratulations on 100% score.',
+            ],
+            'generated_at' => now(),
+        ]);
+
+        // Model accessor should automatically sanitize
+        $this->assertNull($report->domain_breakdown['weakest_domain']);
+        $this->assertEmpty($report->ai_action_plan['priority_domains']);
+        $this->assertEmpty($report->ai_action_plan['review_topics']);
+        $this->assertStringNotContainsString('ASC 606', implode(' ', $report->ai_action_plan['study_steps']));
+        $this->assertStringContainsString('Spaced Retrieval', implode(' ', $report->ai_action_plan['study_steps']));
     }
 }

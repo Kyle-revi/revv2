@@ -191,6 +191,7 @@ class MockBoardReadinessService
             'item_insights' => $itemInsights,
             'peer_benchmark' => $peerBenchmark,
             'historical_comparison' => $historicalComparison,
+            'program' => $mockBoard->program ?? $user->program ?? 'accountancy',
         ];
     }
 
@@ -422,14 +423,19 @@ class MockBoardReadinessService
         $fallback = $this->buildFallbackActionPlan($reportData);
 
         try {
-            $weakestDomains = collect($reportData['domains']['list'] ?? [])
+            $readiness = (float) ($reportData['summary']['readiness_percentage'] ?? 0);
+            $domainList = (array) ($reportData['domains']['list'] ?? []);
+            $allDomains100 = ! empty($domainList) && collect($domainList)->every(fn ($d) => ($d['post_score'] ?? 0) >= 100);
+            $isPerfectScore = $readiness >= 100 || $allDomains100;
+
+            $weakestDomains = collect($domainList)
                 ->where('status', 'Weak')
                 ->pluck('domain')
                 ->take(3)
                 ->toArray();
 
             if (empty($weakestDomains)) {
-                $weakestDomains = collect($reportData['domains']['list'] ?? [])
+                $weakestDomains = collect($domainList)
                     ->filter(fn ($d) => ($d['post_score'] ?? 0) < 100)
                     ->sortBy('post_score')
                     ->pluck('domain')
@@ -442,10 +448,29 @@ class MockBoardReadinessService
                 collect($reportData['item_insights']['regressed_items'] ?? [])->pluck('stem')->toArray()
             );
 
-            $systemPrompt = 'You are a professional CPA board examination adviser and academic diagnostician. '.
-                "Provide an actionable, realistic, high-yield study action plan based on the student's mock board performance. ".
-                "Do NOT give generic clichés like 'study harder' or 'manage your time'. Focus on specific domains and conceptual rigor. ".
-                "Always reply with valid JSON containing keys: 'priority_domains' (array of strings), 'review_topics' (array of strings), 'study_steps' (array of 3 to 5 strings), 'summary_narrative' (string).";
+            // If the student has a perfect score or no weak domains and no missed items, use the dedicated mastery fallback plan directly
+            if ($isPerfectScore || (empty($weakestDomains) && empty($missedStems))) {
+                return $fallback;
+            }
+
+            $testedDomains = collect($domainList)->pluck('domain')->filter()->values()->toArray();
+            $testedDomainsStr = ! empty($testedDomains) ? implode(', ', $testedDomains) : 'Evaluated Domains';
+
+            $program = strtolower((string) ($reportData['program'] ?? 'accountancy'));
+            $frameworkContext = 'Philippine Certified Public Accountant Licensure Examination (PRC CPALE) administered by the Professional Regulation Commission (PRC) Board of Accountancy (BOA). All standards must adhere strictly to Philippine Accounting Standards (PAS), Philippine Financial Reporting Standards (PFRS), Philippine Standards on Auditing (PSA), Philippine Tax Code (NIRC as amended by CREATE / EOPT), and Regulatory Framework for Business Transactions (RFBT). NEVER cite US AICPA (FAR/AUD/REG/BEC) or US FASB ASC standards (e.g. ASC 606, ASC 842, ASC 230). Never refer to US GAAP or foreign state accountancy boards.';
+
+            if (str_contains($program, 'psych')) {
+                $frameworkContext = 'Philippine Board Licensure Examination for Psychometricians (PRC BLEPP) administered by the PRC Professional Regulatory Board of Psychology. Standards must adhere to RA 10029, Psychological Association of the Philippines (PAP) Code of Ethics, Psychological Assessment, Abnormal Psychology, Theories of Personality, and Industrial Psychology.';
+            } elseif (str_contains($program, 'educ') || str_contains($program, 'teach')) {
+                $frameworkContext = 'Philippine Licensure Examination for Teachers (PRC LET) administered by the PRC Board for Professional Teachers. Standards must adhere to Philippine Professional Standards for Teachers (PPST), Code of Ethics for Professional Teachers, General Education, Professional Education, and Specialization.';
+            }
+
+            $systemPrompt = "You are a professional licensure board examination adviser and academic diagnostician for the {$frameworkContext}\n".
+                "Provide an actionable, realistic, high-yield study action plan based strictly on the student's mock board performance.\n".
+                "CRITICAL REQUIREMENTS:\n".
+                "- Only recommend priority domains that are within the student's tested subjects: [{$testedDomainsStr}] and where the student actually scored below 100%.\n".
+                "- NEVER invent or hallucinate foreign standards, non-existent subjects, or topics not related to the curriculum.\n".
+                "- Always reply with valid JSON containing keys: 'priority_domains' (array of strings), 'review_topics' (array of strings), 'study_steps' (array of 3 to 5 strings), 'summary_narrative' (string).";
 
             $userPrompt = "Student Performance Profile:\n".
                 "- Readiness Score: {$reportData['summary']['readiness_percentage']}%\n".
@@ -453,8 +478,9 @@ class MockBoardReadinessService
                 "- Likelihood Tier: {$reportData['summary']['tier_label']}\n".
                 "- Gap to Pass: {$reportData['summary']['gap_percentage']}% ({$reportData['summary']['gap_items']} items)\n".
                 "- Growth from Pre-Test: {$reportData['growth']['improvement_percentage']}%\n".
-                '- Weakest Domains: '.implode(', ', $weakestDomains)."\n".
-                '- Missed Concept Samples: '.implode('; ', array_slice($missedStems, 0, 3))."\n\n".
+                '- Tested Domains: '.$testedDomainsStr."\n".
+                '- Weakest Domains (< 100%): '.(empty($weakestDomains) ? 'None' : implode(', ', $weakestDomains))."\n".
+                '- Missed Concept Samples: '.(empty($missedStems) ? 'None' : implode('; ', array_slice($missedStems, 0, 3)))."\n\n".
                 'Produce the JSON action plan now:';
 
             $result = $this->ai->run($this->aiSettings->getModel(), [
@@ -472,10 +498,31 @@ class MockBoardReadinessService
 
             $parsed = $this->parseActionPlanJson((string) $rawResponse);
             if (! empty($parsed['study_steps'])) {
+                // Filter priority domains to only valid tested domains with score < 100%
+                $validWeakDomainNames = collect($domainList)
+                    ->filter(fn ($d) => ($d['post_score'] ?? 0) < 100)
+                    ->pluck('domain')
+                    ->all();
+
+                $filteredPriorityDomains = array_values(array_filter(
+                    (array) ($parsed['priority_domains'] ?? []),
+                    fn ($dom) => in_array($dom, $validWeakDomainNames, true)
+                ));
+
+                // Reject study steps with US AICPA / ASC hallucinations
+                $steps = (array) ($parsed['study_steps'] ?? []);
+                $hasUsHallucination = false;
+                foreach ($steps as $st) {
+                    if (preg_match('/ASC\s*\d+|AICPA|US\s*GAAP/i', (string) $st)) {
+                        $hasUsHallucination = true;
+                        break;
+                    }
+                }
+
                 return [
-                    'priority_domains' => ! empty($parsed['priority_domains']) ? $parsed['priority_domains'] : $fallback['priority_domains'],
+                    'priority_domains' => ! empty($filteredPriorityDomains) ? $filteredPriorityDomains : $fallback['priority_domains'],
                     'review_topics' => ! empty($parsed['review_topics']) ? $parsed['review_topics'] : $fallback['review_topics'],
-                    'study_steps' => $parsed['study_steps'],
+                    'study_steps' => (! empty($steps) && ! $hasUsHallucination) ? $steps : $fallback['study_steps'],
                     'summary_narrative' => ! empty($parsed['summary_narrative']) ? $parsed['summary_narrative'] : $fallback['summary_narrative'],
                 ];
             }
@@ -526,20 +573,40 @@ class MockBoardReadinessService
      */
     protected function buildFallbackActionPlan(array $reportData): array
     {
-        $weakDomains = collect($reportData['domains']['list'] ?? [])
+        $readiness = (float) ($reportData['summary']['readiness_percentage'] ?? 0);
+        $threshold = (int) ($reportData['summary']['passing_threshold'] ?? 75);
+        $domainList = (array) ($reportData['domains']['list'] ?? []);
+
+        $weakDomains = collect($domainList)
             ->where('status', 'Weak')
             ->pluck('domain')
             ->values()
             ->all();
 
         if (empty($weakDomains)) {
-            $weakDomains = collect($reportData['domains']['list'] ?? [])
+            $weakDomains = collect($domainList)
                 ->filter(fn ($d) => ($d['post_score'] ?? 0) < 100)
                 ->sortBy('post_score')
                 ->take(2)
                 ->pluck('domain')
                 ->values()
                 ->all();
+        }
+
+        $allMastered = $readiness >= 100 || (empty($weakDomains) && ! empty($domainList));
+
+        if ($allMastered) {
+            return [
+                'priority_domains' => [],
+                'review_topics' => [],
+                'study_steps' => [
+                    '1. Maintain Mastery Through Spaced Retrieval: Schedule periodic active recall quizzes to retain theoretical frameworks and computational agility across all tested Philippine CPA syllabus topics.',
+                    '2. Pacing and Time Management: Practice complete timed mock board simulations (3 hours per subject) to master pacing, time allocation per problem, and exam-day speed.',
+                    '3. Stay Updated with Latest Regulatory Issuances: Review the latest BIR revenue regulations, PRC Board of Accountancy updates, and newly effective PFRS/PAS amendments.',
+                    '4. Simulate Actual Licensure Exam Conditions: Rehearse under strict PRC CPALE examination conditions (non-programmable calculators, standard scratch paper, uninterrupted 3-hour blocks) to maximize mental stamina.',
+                ],
+                'summary_narrative' => 'Outstanding achievement! You have demonstrated 100% mastery across all evaluated domains. At this advanced level, your primary objective is sustained retention, exam-day time management, and staying aligned with the latest Philippine licensure examination standards.',
+            ];
         }
 
         $missedTopics = [];
@@ -568,9 +635,6 @@ class MockBoardReadinessService
         }
 
         $studySteps[] = '4. Target a minimum +'.max(5, (int) round($reportData['summary']['gap_percentage'])).'% score gain on the next practice simulation.';
-
-        $readiness = $reportData['summary']['readiness_percentage'] ?? 0;
-        $threshold = $reportData['summary']['passing_threshold'] ?? 75;
 
         $narrative = $readiness >= $threshold
             ? "Your performance confirms a solid mastery above the {$threshold}% benchmark. Prioritize fine-tuning low-scoring edge cases while sustaining domain retention."

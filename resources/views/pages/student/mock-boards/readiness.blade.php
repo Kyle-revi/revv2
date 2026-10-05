@@ -378,23 +378,46 @@
                 </div>
             @endif
 
+            @php
+                $isPerfectScore = ($summary['readiness_percentage'] >= 100) || (!empty($domains['list']) && collect($domains['list'])->every(fn($d) => ($d['post_score'] ?? 0) >= 100));
+                $priorityDomains = (array) ($aiPlan['priority_domains'] ?? []);
+                $reviewTopics = (array) ($aiPlan['review_topics'] ?? []);
+            @endphp
+
             <div class="ai-details-grid">
-                @if(!empty($aiPlan['priority_domains']))
+                @if($isPerfectScore)
+                    <div class="ai-subcard" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+                        <h4 class="ai-subcard-title" style="color: #15803d;"><i class="fas fa-award" style="color: #16a34a;"></i> Priority Focus Domains</h4>
+                        <ul class="ai-tags-list">
+                            <li class="ai-priority-tag positive">
+                                <i class="fas fa-check-circle" style="margin-right: 4px;"></i> All Domains Mastered (100%)
+                            </li>
+                        </ul>
+                    </div>
+                @elseif(!empty($priorityDomains))
                     <div class="ai-subcard">
                         <h4 class="ai-subcard-title"><i class="fas fa-bullseye" style="color: #dc2626;"></i> Priority Focus Domains</h4>
                         <ul class="ai-tags-list">
-                            @foreach((array) $aiPlan['priority_domains'] as $dom)
+                            @foreach($priorityDomains as $dom)
                                 <li class="ai-priority-tag">{{ $dom }}</li>
                             @endforeach
                         </ul>
                     </div>
                 @endif
 
-                @if(!empty($aiPlan['review_topics']))
+                @if($isPerfectScore)
+                    <div class="ai-subcard" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+                        <h4 class="ai-subcard-title" style="color: #15803d;"><i class="fas fa-circle-check" style="color: #16a34a;"></i> Specific Concepts to Revisit</h4>
+                        <ul class="ai-topic-bullets">
+                            <li style="color: #15803d;"><i class="fas fa-check" style="margin-right: 6px; color: #16a34a;"></i> No conceptual gaps identified across evaluated examination items.</li>
+                            <li style="color: #15803d;"><i class="fas fa-check" style="margin-right: 6px; color: #16a34a;"></i> Perfect accuracy (100%) recorded across all tested domains.</li>
+                        </ul>
+                    </div>
+                @elseif(!empty($reviewTopics))
                     <div class="ai-subcard">
                         <h4 class="ai-subcard-title"><i class="fas fa-list-check" style="color: #d97706;"></i> Specific Concepts to Revisit</h4>
                         <ul class="ai-topic-bullets">
-                            @foreach((array) $aiPlan['review_topics'] as $topic)
+                            @foreach($reviewTopics as $topic)
                                 <li>{{ $topic }}</li>
                             @endforeach
                         </ul>
@@ -402,13 +425,34 @@
                 @endif
             </div>
 
-            @if(!empty($aiPlan['study_steps']))
+            @php
+                $rawSteps = (array) ($aiPlan['study_steps'] ?? []);
+                $hasUsHallucination = false;
+                foreach ($rawSteps as $st) {
+                    if (preg_match('/ASC\s*\d+|AICPA|US\s*GAAP/i', (string) $st)) {
+                        $hasUsHallucination = true;
+                        break;
+                    }
+                }
+                if ($isPerfectScore && ($hasUsHallucination || empty($rawSteps))) {
+                    $studySteps = [
+                        '1. Maintain Mastery Through Spaced Retrieval: Schedule periodic active recall quizzes to retain theoretical frameworks and computational agility across all tested Philippine CPA syllabus topics.',
+                        '2. Pacing and Time Management: Practice complete timed mock board simulations (3 hours per subject) to master pacing, time allocation per problem, and exam-day speed.',
+                        '3. Stay Updated with Latest Regulatory Issuances: Review the latest BIR revenue regulations, PRC Board of Accountancy updates, and newly effective PFRS/PAS amendments.',
+                        '4. Simulate Actual Licensure Exam Conditions: Rehearse under strict PRC CPALE examination conditions (non-programmable calculators, standard scratch paper, uninterrupted 3-hour blocks) to maximize mental stamina.',
+                    ];
+                } else {
+                    $studySteps = $rawSteps;
+                }
+            @endphp
+
+            @if(!empty($studySteps))
                 <div class="ai-steps-section">
                     <h4 class="ai-subcard-title" style="margin-bottom: 14px;">
                         <i class="fas fa-clipboard-list" style="color: #245E55;"></i> Recommended Step-by-Step Study Sequence
                     </h4>
                     <div class="ai-steps-list">
-                        @foreach((array) $aiPlan['study_steps'] as $idx => $step)
+                        @foreach($studySteps as $idx => $step)
                             <div class="ai-step-row">
                                 <div class="step-num">{{ $idx + 1 }}</div>
                                 <div class="step-body">{{ preg_replace('/^\d+\.\s*/', '', $step) }}</div>
@@ -1120,6 +1164,11 @@
         border: 1px solid #fecaca;
         padding: 5px 12px;
         border-radius: 8px;
+    }
+    .ai-priority-tag.positive {
+        background: #ecfdf5;
+        color: #065f46;
+        border-color: #a7f3d0;
     }
     .ai-topic-bullets {
         padding-left: 18px;
