@@ -121,6 +121,17 @@ class QuizController extends Controller
         $clean = preg_replace('/(?<=(?:\.|\?|\!)\s|\n|^)you\b/', 'You', $clean);
         $clean = preg_replace('/(?<=(?:\.|\?|\!)\s|\n|^)your\b/', 'Your', $clean);
 
+        // Lowercase "you" / "your" when appearing mid-clause after commas or conjunctions
+        $clean = preg_replace('/([,;]\s+)You\b/', '$1you', $clean);
+        $clean = preg_replace('/([,;]\s+)Your\b/', '$1your', $clean);
+        $clean = preg_replace('/\b(that|which|where|when|if|because|although)\s+You\b/i', '$1 you', $clean);
+        $clean = preg_replace('/\b(that|which|where|when|if|because|although)\s+Your\b/i', '$1 your', $clean);
+
+        // Clean conversational padding in recommendation action items (e.g. "To prevent repeating the mistake, You should practice..." -> "Practice...")
+        $clean = preg_replace_callback('/((?:^|\n)\s*(?:[-*]|\d+\.)\s*(?:\*\*[^*]+\*\*:\s*|[A-Za-z\s]+:\s*)?)(?:To prevent repeating (?:the|this|any) mistake[s]?,\s*)?(?:Before retaking (?:the|this) (?:test|quiz|exam),\s*)?You should\s+([a-z])/i', function (array $matches): string {
+            return $matches[1].ucfirst($matches[2]);
+        }, $clean);
+
         // 4. Remove "Item \d+:\s*" or "Question \d+:\s*" prefixes at bullet beginnings
         $clean = preg_replace('/(?<=(?:^|\n)[-*\d\.\s]{0,10})\b(?:Item|Question)\s*\d+\s*:\s*/i', '', $clean);
 

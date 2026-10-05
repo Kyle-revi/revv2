@@ -197,7 +197,7 @@ class QuizInsightsTest extends TestCase
             'is_correct' => true,
         ]);
 
-        $mockResponse = "Strong Areas:\n- Item 1: The student demonstrated an understanding of protective factors (APA, 2020, p. 123). They have shown solid grasp, which will help them succeed.\n\nWeak Areas:\n- Item 2: The student incorrectly identified developmental psychopathology (Wampold, 2001, p. 12). They selected an answer that was incomplete. you selected options prematurely. Review cultural norms and their variability, and practice how to distinguish them.\n\nRecommendation:\n1. Re-read the principles of developmental psychopathology (APA, 2020, p. 145) to solidify their understanding.\n2. Review case studies.";
+        $mockResponse = "Strong Areas:\n- Item 1: The student demonstrated an understanding of protective factors (APA, 2020, p. 123). They have shown solid grasp, which will help them succeed. This shows that You have grasped the core idea.\n\nWeak Areas:\n- Item 2: The student incorrectly identified developmental psychopathology (Wampold, 2001, p. 12). They selected an answer that was incomplete. you selected options prematurely. Review cultural norms and their variability, and practice how to distinguish them.\n\nRecommendation:\n1. Re-read the principles of developmental psychopathology (APA, 2020, p. 145) to solidify their understanding.\n2. To prevent repeating the mistake, You should practice case studies.\n3. Before retaking the test, You should review cultural norms.";
 
         $this->app->instance('App\\Services\\CloudflareAI', new class($mockResponse) extends CloudflareAI
         {
@@ -232,6 +232,7 @@ class QuizInsightsTest extends TestCase
         // Verify pronoun conversions and preservation of concept nouns
         $this->assertStringContainsString('You have shown', $strong);
         $this->assertStringContainsString('help you succeed', $strong);
+        $this->assertStringContainsString('that you have grasped', $strong);
         $this->assertStringContainsString('their variability', $weak);
         $this->assertStringContainsString('distinguish them', $weak);
         $this->assertStringContainsString('solidify your understanding', $rec);
@@ -239,6 +240,11 @@ class QuizInsightsTest extends TestCase
         // Verify sentence-start capitalization for "You"
         $this->assertStringContainsString('You selected', $weak);
         $this->assertStringNotContainsString('. you selected', $weak);
+
+        // Verify recommendation padding cleanup (imperative steps)
+        $this->assertStringContainsString('2. Practice case studies', $rec);
+        $this->assertStringContainsString('3. Review cultural norms', $rec);
+        $this->assertStringNotContainsString('You should', $rec);
 
         // Verify "Item 1:" / "Item 2:" prefixes are removed
         $this->assertStringNotContainsString('Item 1:', $strong);
