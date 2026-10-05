@@ -310,9 +310,8 @@ class PerformanceController extends Controller
         }
 
         if ($isAssessment) {
-            // Keep assessment behavior unchanged.
             $latestAttempt = (clone $attemptQuery)
-                ->latest('created_at')
+                ->latest('updated_at')
                 ->first();
         } else {
             // For pre-assessment, prefer the latest attempt that has saved answers.
@@ -322,24 +321,55 @@ class PerformanceController extends Controller
                         ->from('quiz_answers')
                         ->whereColumn('quiz_answers.attempt_id', 'quiz_attempts.id');
                 })
-                ->latest('created_at')
+                ->latest('updated_at')
                 ->first();
 
             if (! $latestAttempt) {
                 $latestAttempt = (clone $attemptQuery)
-                    ->latest('created_at')
+                    ->latest('updated_at')
                     ->first();
             }
         }
 
         if (! $latestAttempt) {
+            $pendingAssessment = null;
+            if ($isAssessment) {
+                $targetModuleId = ($selectedModuleId && $selectedModuleId !== 'all')
+                    ? (int) $selectedModuleId
+                    : Module::where('class_id', $class->id)->where('is_formal_assessment', true)->value('id');
+
+                if ($targetModuleId) {
+                    $mod = Module::find($targetModuleId);
+                    if ($mod) {
+                        $grant = AssessmentAttemptGrant::where('module_id', $mod->id)
+                            ->where('user_id', $student->id)
+                            ->first();
+                        $baseMax = $mod->max_attempts ?? 1;
+                        $extra = $grant->extra_attempts ?? 0;
+                        $pendingAssessment = [
+                            'id' => null,
+                            'score' => 0,
+                            'total' => 0,
+                            'percentage' => 0,
+                            'created_at' => null,
+                            'module_id' => $mod->id,
+                            'is_formal_assessment' => true,
+                            'attempts_used' => 0,
+                            'base_max_attempts' => $baseMax,
+                            'extra_attempts_granted' => $extra,
+                            'attempts_allowed' => $baseMax + $extra,
+                        ];
+                    }
+                }
+            }
+
             return response()->json([
                 'student' => [
                     'id' => $student->id,
                     'name' => $student->name,
                     'program' => $student->program,
                 ],
-                'attempt' => null,
+                'attempt' => $pendingAssessment,
                 'answers' => [],
             ]);
         }

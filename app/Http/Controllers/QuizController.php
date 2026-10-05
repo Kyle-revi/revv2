@@ -1106,12 +1106,13 @@ class QuizController extends Controller
     public function updateMaxAttempts(Request $request, Module $module)
     {
         $class = $module->class;
-        $isOwnerOrAdmin = $class
-            ? ($class->created_by === Auth::id() || Auth::user()->role === 'admin')
-            : (Auth::user()->role === 'admin' || Auth::user()->role === 'teacher');
+        $user = Auth::user();
+        $isAuthorized = in_array($user->role, ['admin', 'superadmin'])
+            || ($class && $class->created_by === $user->id)
+            || ($user->role === 'teacher');
 
-        if (! $isOwnerOrAdmin) {
-            abort(403);
+        if (! $isAuthorized) {
+            abort(403, 'Unauthorized to update max attempts for this module.');
         }
 
         $validated = $request->validate([
@@ -1122,7 +1123,7 @@ class QuizController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Naka-set na ngayon sa '.$validated['max_attempts'].' ang base na attempts para sa assessment na ito.',
+            'message' => 'Naka-set na ngayon sa '.$validated['max_attempts'].' ang base attempts para sa test na "'.$module->title.'" (para sa lahat ng estudyante).',
             'max_attempts' => $module->max_attempts,
         ]);
     }
@@ -1134,12 +1135,13 @@ class QuizController extends Controller
     public function grantExtraAttempt(Request $request, Module $module, User $student)
     {
         $class = $module->class;
-        $isOwnerOrAdmin = $class
-            ? ($class->created_by === Auth::id() || Auth::user()->role === 'admin')
-            : (Auth::user()->role === 'admin' || Auth::user()->role === 'teacher');
+        $user = Auth::user();
+        $isAuthorized = in_array($user->role, ['admin', 'superadmin'])
+            || ($class && $class->created_by === $user->id)
+            || ($user->role === 'teacher');
 
-        if (! $isOwnerOrAdmin) {
-            abort(403);
+        if (! $isAuthorized) {
+            abort(403, 'Unauthorized to grant attempts for this module.');
         }
 
         $validated = $request->validate([
@@ -1147,19 +1149,27 @@ class QuizController extends Controller
             'reason' => 'nullable|string|max:255',
         ]);
 
-        $grant = AssessmentAttemptGrant::updateOrCreate(
-            ['module_id' => $module->id, 'user_id' => $student->id],
-            [
-                'extra_attempts' => $validated['extra_attempts'],
-                'granted_by' => Auth::id(),
-                'reason' => $validated['reason'] ?? null,
-            ]
-        );
+        $grant = AssessmentAttemptGrant::firstOrNew([
+            'module_id' => $module->id,
+            'user_id' => $student->id,
+        ]);
+
+        $previous = (int) ($grant->extra_attempts ?? 0);
+        $added = (int) $validated['extra_attempts'];
+        $grant->extra_attempts = $previous + $added;
+        $grant->granted_by = $user->id;
+        if (! empty($validated['reason'])) {
+            $grant->reason = $validated['reason'];
+        }
+        $grant->save();
+
+        $totalAllowed = ($module->max_attempts ?? 1) + $grant->extra_attempts;
 
         return response()->json([
             'success' => true,
-            'message' => $student->name.' ay bibigyan ng '.$validated['extra_attempts'].' karagdagang attempt(s).',
-            'total_allowed' => ($module->max_attempts ?? 1) + $grant->extra_attempts,
+            'message' => "Dinagdagan ng +{$added} attempt si {$student->name}. Kabuuang pinapayagan na ngayon: {$totalAllowed} attempt(s).",
+            'extra_granted' => $grant->extra_attempts,
+            'total_allowed' => $totalAllowed,
         ]);
     }
 

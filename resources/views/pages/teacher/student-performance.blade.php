@@ -841,11 +841,35 @@
             <select id="assessModuleSelect" class="sp-filter-select" onchange="onAssessModuleSelect(this.value)">
                 <option value="all">All Formal Assessments (Class Overview)</option>
                 @foreach($formalAssessmentModules as $fm)
-                    <option value="{{ $fm->id }}" {{ (isset($selectedAssessModuleId) && (string)$selectedAssessModuleId === (string)$fm->id) ? 'selected' : '' }}>
+                    <option value="{{ $fm->id }}"
+                            {{ (isset($selectedAssessModuleId) && (string)$selectedAssessModuleId === (string)$fm->id) ? 'selected' : '' }}
+                            data-base-attempts="{{ $fm->max_attempts ?? 1 }}">
                         {{ $fm->title }}
                     </option>
                 @endforeach
             </select>
+        </div>
+
+        {{-- Assessment-Level Base Attempt Settings (Per Test) --}}
+        <div id="assessBaseLimitControl" style="display:none; align-items:center; gap:10px; margin-left:auto; flex-wrap:wrap;">
+            <div style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#475569; background:#f8fafc; padding:5px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+                <i class="fas fa-redo" style="color:#2563eb;"></i>
+                <span>Base Limit (Per Test):</span>
+                <strong id="assessBaseLimitDisplay" style="color:#0f172a; font-size:14px;">1</strong>
+                <span style="font-size:12px; color:#64748b;">attempt(s)</span>
+            </div>
+            <button type="button" class="sp-page-btn" onclick="toggleAssessBaseLimitForm()" style="display:inline-flex; align-items:center; gap:5px; font-size:12px; padding:5px 10px;" title="Set base attempts for all students taking this assessment">
+                <i class="fas fa-sliders-h"></i> Edit Base Limit
+            </button>
+            <div id="assessBaseLimitForm" style="display:none; align-items:center; gap:6px;">
+                <input type="number" id="assessBaseLimitInput" min="1" max="20" value="1" style="width:65px; padding:4px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                <button type="button" class="sp-page-btn" style="background:#0f172a; color:#fff; border-color:#0f172a;" onclick="submitAssessBaseLimit()">
+                    Save
+                </button>
+                <button type="button" class="sp-page-btn" onclick="toggleAssessBaseLimitForm(false)">
+                    Cancel
+                </button>
+            </div>
         </div>
     </div>
 
@@ -957,32 +981,25 @@
     {{-- Attempt Limit / Grant Extra Attempt (formal assessments only) --}}
     <div id="iaAttemptLimitBox" style="display:none; padding: 14px 24px; border-bottom: 1px solid #f0f0f0; background: #fafafa;">
         <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-            <div style="font-size:16px; color:#555;">
-                Attempts used: <strong id="iaAttemptsUsed">-</strong> / <span id="iaAttemptsAllowed">-</span>
-                <span style="color:#bbb; font-size:14px;" id="iaAttemptsBreakdown"></span>
+            <div style="font-size:15px; color:#475569;">
+                Attempts used: <strong id="iaAttemptsUsed" style="color:#0f172a;">-</strong> / <span id="iaAttemptsAllowed" style="color:#0f172a;">-</span>
+                <span style="color:#64748b; font-size:13px; margin-left:4px;" id="iaAttemptsBreakdown"></span>
             </div>
             <div style="display:flex; gap:8px;">
-                <button type="button" class="sp-refresh-btn" onclick="toggleMaxAttemptsForm()">
-                    <i class="fas fa-sliders-h"></i> Edit Base Limit
-                </button>
-                <button type="button" class="sp-refresh-btn" id="iaGrantToggleBtn" onclick="toggleGrantForm()">
+                <button type="button" class="sp-refresh-btn" id="iaGrantToggleBtn" onclick="toggleGrantForm()" style="background:#0f172a; color:#fff; border-color:#0f172a;">
                     <i class="fas fa-plus"></i> Grant Extra Attempt
                 </button>
             </div>
         </div>
-        <div id="iaMaxAttemptsForm" style="display:none; margin-top:12px; gap:8px; align-items:center; flex-wrap:wrap;">
-            <label style="font-size:15px; color:#666;">New base limit:</label>
-            <input type="number" id="iaMaxAttemptsInput" min="1" max="20" value="1" style="width:70px; padding:6px 8px; border:1px solid #e4e4e4; border-radius:8px;">
-            <button type="button" class="sp-refresh-btn" style="background:#0f0f0f; color:#fff; border-color:#0f0f0f;" onclick="submitMaxAttempts()">
-                Confirm
+        <div id="iaGrantForm" style="display:none; margin-top:12px; gap:8px; align-items:center; flex-wrap:wrap; padding:10px 12px; background:#fff; border:1px solid #e2e8f0; border-radius:8px;">
+            <label style="font-size:13.5px; color:#334155; font-weight:500;">Add Extra Attempts:</label>
+            <input type="number" id="iaGrantAmount" min="1" max="10" value="1" style="width:65px; padding:6px 8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+            <input type="text" id="iaGrantReason" placeholder="Reason (e.g. internet disconnection)" style="flex:1; min-width:180px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+            <button type="button" class="sp-refresh-btn" style="background:#2563eb; color:#fff; border-color:#2563eb;" onclick="submitGrant()">
+                Confirm Grant
             </button>
-        </div>
-        <div id="iaGrantForm" style="display:none; margin-top:12px; gap:8px; align-items:center; flex-wrap:wrap;">
-            <label style="font-size:15px; color:#666;">Extra attempts:</label>
-            <input type="number" id="iaGrantAmount" min="1" max="10" value="1" style="width:70px; padding:6px 8px; border:1px solid #e4e4e4; border-radius:8px;">
-            <input type="text" id="iaGrantReason" placeholder="Reason (optional)" style="flex:1; min-width:160px; padding:6px 10px; border:1px solid #e4e4e4; border-radius:8px;">
-            <button type="button" class="sp-refresh-btn" style="background:#0f0f0f; color:#fff; border-color:#0f0f0f;" onclick="submitGrant()">
-                Confirm
+            <button type="button" class="sp-refresh-btn" onclick="toggleGrantForm(false)">
+                Cancel
             </button>
         </div>
     </div>
@@ -1062,6 +1079,7 @@ async function onQuizModuleSelect(val) {
 
 async function onAssessModuleSelect(val) {
     currentAssessModuleId = val || 'all';
+    updateAssessBaseLimitDisplay();
     await fetchAndUpdatePerformance('assessment');
 }
 
@@ -1783,6 +1801,7 @@ function renderAssessmentTopStudents(newItems) {
     }
 }
 renderAssessmentTopStudents();
+updateAssessBaseLimitDisplay();
 
 /* Tab switching */
 document.querySelectorAll('.sp-tab-btn').forEach(function (btn) {
@@ -1801,6 +1820,7 @@ document.querySelectorAll('.sp-tab-btn').forEach(function (btn) {
             }
         } else {
             renderAssessmentPassFailCard();
+            updateAssessBaseLimitDisplay();
             if (currentAssessQuestionStats.length) {
                 buildAssessmentQuestionChart(currentAssessQuestionStats);
             }
@@ -2027,31 +2047,36 @@ function renderAttemptLimitBox(attempt, studentId) {
     var box = document.getElementById('iaAttemptLimitBox');
     var grantForm = document.getElementById('iaGrantForm');
 
-    if (!attempt.is_formal_assessment) {
+    if (!attempt || !attempt.is_formal_assessment) {
         box.style.display = 'none';
-        grantForm.style.display = 'none';
+        if (grantForm) grantForm.style.display = 'none';
         return;
     }
 
     box.style.display = '';
-    grantForm.style.display = 'none';
-    document.getElementById('iaMaxAttemptsForm').style.display = 'none';
-    document.getElementById('iaMaxAttemptsInput').value = attempt.base_max_attempts;
+    if (grantForm) grantForm.style.display = 'none';
 
-    document.getElementById('iaAttemptsUsed').textContent = attempt.attempts_used;
-    document.getElementById('iaAttemptsAllowed').textContent = attempt.attempts_allowed;
+    document.getElementById('iaAttemptsUsed').textContent = attempt.attempts_used ?? 0;
+    document.getElementById('iaAttemptsAllowed').textContent = attempt.attempts_allowed ?? attempt.base_max_attempts ?? 1;
 
     var breakdown = document.getElementById('iaAttemptsBreakdown');
-    breakdown.textContent = attempt.extra_attempts_granted > 0
-        ? `(base ${attempt.base_max_attempts} + ${attempt.extra_attempts_granted} granted)`
-        : `(base ${attempt.base_max_attempts})`;
+    var extra = Number(attempt.extra_attempts_granted || 0);
+    var base = Number(attempt.base_max_attempts || 1);
+    breakdown.textContent = extra > 0
+        ? `(Base: ${base} + ${extra} extra granted)`
+        : `(Base: ${base})`;
 
     currentGrantContext = { moduleId: attempt.module_id, studentId: studentId };
 }
 
-function toggleGrantForm() {
+function toggleGrantForm(forceState) {
     var form = document.getElementById('iaGrantForm');
-    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+    if (!form) return;
+    if (typeof forceState === 'boolean') {
+        form.style.display = forceState ? 'flex' : 'none';
+    } else {
+        form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+    }
 }
 
 async function submitGrant() {
@@ -2084,7 +2109,7 @@ async function submitGrant() {
         }
 
         alert(data.message);
-        document.getElementById('iaGrantForm').style.display = 'none';
+        toggleGrantForm(false);
 
         // Refresh dialog to reflect updated attempts_allowed
         var isAssessment = true; // grant is only for formal assessments
@@ -2094,19 +2119,44 @@ async function submitGrant() {
     }
 }
 
-function toggleMaxAttemptsForm() {
-    var form = document.getElementById('iaMaxAttemptsForm');
-    form.style.display = form.style.display === 'none' ? 'flex' : 'none';
-}
+function updateAssessBaseLimitDisplay() {
+    var control = document.getElementById('assessBaseLimitControl');
+    var display = document.getElementById('assessBaseLimitDisplay');
+    var input = document.getElementById('assessBaseLimitInput');
+    var select = document.getElementById('assessModuleSelect');
+    if (!control || !select) return;
 
-async function submitMaxAttempts() {
-    if (!currentGrantContext.moduleId) {
-        alert('No module selected. Please reopen the analysis.');
+    if (!currentAssessModuleId || currentAssessModuleId === 'all') {
+        control.style.display = 'none';
         return;
     }
 
-    var value = parseInt(document.getElementById('iaMaxAttemptsInput').value, 10) || 1;
-    var url = `/modules/${currentGrantContext.moduleId}/quiz/max-attempts`;
+    control.style.display = 'inline-flex';
+    var selectedOption = select.options[select.selectedIndex];
+    var baseAttempts = selectedOption ? (selectedOption.dataset.baseAttempts || '1') : '1';
+    if (display) display.textContent = baseAttempts;
+    if (input) input.value = baseAttempts;
+}
+
+function toggleAssessBaseLimitForm(forceState) {
+    var form = document.getElementById('assessBaseLimitForm');
+    if (!form) return;
+    if (typeof forceState === 'boolean') {
+        form.style.display = forceState ? 'inline-flex' : 'none';
+    } else {
+        form.style.display = form.style.display === 'none' ? 'inline-flex' : 'none';
+    }
+}
+
+async function submitAssessBaseLimit() {
+    if (!currentAssessModuleId || currentAssessModuleId === 'all') {
+        alert('Please select a specific assessment first.');
+        return;
+    }
+
+    var input = document.getElementById('assessBaseLimitInput');
+    var value = parseInt(input ? input.value : 1, 10) || 1;
+    var url = `/modules/${currentAssessModuleId}/quiz/max-attempts`;
 
     try {
         const res = await fetch(url, {
@@ -2122,16 +2172,20 @@ async function submitMaxAttempts() {
         const data = await res.json();
 
         if (!res.ok || !data.success) {
-            alert(data.message || 'Failed to save max attempts.');
+            alert(data.message || 'Failed to save base attempts.');
             return;
         }
 
         alert(data.message);
-        document.getElementById('iaMaxAttemptsForm').style.display = 'none';
-
-        openItemAnalysis(currentGrantContext.studentId, document.getElementById('iaStudentName').textContent, true);
+        var select = document.getElementById('assessModuleSelect');
+        if (select && select.selectedIndex >= 0) {
+            select.options[select.selectedIndex].dataset.baseAttempts = value;
+        }
+        var display = document.getElementById('assessBaseLimitDisplay');
+        if (display) display.textContent = value;
+        toggleAssessBaseLimitForm(false);
     } catch (err) {
-        alert('An error occurred while saving max attempts.');
+        alert('An error occurred while saving base attempts.');
     }
 }
 

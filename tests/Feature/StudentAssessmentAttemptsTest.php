@@ -364,4 +364,37 @@ class StudentAssessmentAttemptsTest extends TestCase
 
         $this->assertSame(3, $assessment->refresh()->max_attempts);
     }
+
+    public function test_teacher_can_incrementally_grant_extra_attempts()
+    {
+        $teacher = $this->createTeacher();
+        $student = $this->createStudent();
+        $class = $this->createClass($teacher);
+        $assessment = $this->createAssessment($class, ['max_attempts' => 1]);
+        $class->users()->attach($student);
+
+        // First grant: +1
+        $this->actingAs($teacher)
+            ->postJson(route('quiz.grant.attempt', [$assessment, $student]), [
+                'extra_attempts' => 1,
+                'reason' => 'First retry grant',
+            ])
+            ->assertOk()
+            ->assertJsonPath('extra_granted', 1)
+            ->assertJsonPath('total_allowed', 2);
+
+        $this->assertEquals(2, $assessment->allowedAttemptsFor($student->id));
+
+        // Second grant: +2 more (cumulative should be 1 + 2 = 3)
+        $this->actingAs($teacher)
+            ->postJson(route('quiz.grant.attempt', [$assessment, $student]), [
+                'extra_attempts' => 2,
+                'reason' => 'Second retry grant',
+            ])
+            ->assertOk()
+            ->assertJsonPath('extra_granted', 3)
+            ->assertJsonPath('total_allowed', 4);
+
+        $this->assertEquals(4, $assessment->allowedAttemptsFor($student->id));
+    }
 }
