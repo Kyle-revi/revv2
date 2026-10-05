@@ -1326,7 +1326,7 @@ function beginQuizUi() {
                 <div class="qz-ai-card qz-ai-card-strong">
                     <div class="qz-ai-card-head">
                         <i class="fas fa-check-circle"></i>
-                        <span>Mastered Concepts</span>
+                        <span>Strong Areas</span>
                     </div>
                     <div class="qz-ai-card-body">
                         ${strongHtml}
@@ -1335,7 +1335,7 @@ function beginQuizUi() {
                 <div class="qz-ai-card qz-ai-card-weak">
                     <div class="qz-ai-card-head">
                         <i class="fas fa-bullseye"></i>
-                        <span>Priority Focus Areas</span>
+                        <span>Weak Areas</span>
                     </div>
                     <div class="qz-ai-card-body">
                         ${weakHtml}
@@ -1344,7 +1344,7 @@ function beginQuizUi() {
                 <div class="qz-ai-card qz-ai-card-rec">
                     <div class="qz-ai-card-head">
                         <i class="fas fa-lightbulb"></i>
-                        <span>Actionable Study Plan</span>
+                        <span>Recommendation</span>
                     </div>
                     <div class="qz-ai-card-body">
                         ${recHtml}
