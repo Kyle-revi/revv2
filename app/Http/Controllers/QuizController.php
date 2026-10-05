@@ -260,11 +260,16 @@ class QuizController extends Controller
             $resolver = app(AiSettingsResolver::class);
             $ai = app(CloudflareAI::class);
             $answersContext = '';
-            foreach ($answers as $a) {
+            foreach ($answers as $idx => $a) {
                 $status = $a->is_correct ? 'Correct' : 'Incorrect';
-                $answersContext .= "- Question: {$a->question->question_text}\n  Student Selected: Option {$a->selected_option} ({$status})\n";
-                if (! $a->is_correct && ! empty($a->question->correct_option)) {
-                    $answersContext .= "  Correct Option: Option {$a->question->correct_option}\n";
+                $qText = trim($a->question->question_text ?? '');
+                $options = is_array($a->question->options) ? $a->question->options : (json_decode($a->question->options ?? '[]', true) ?: []);
+                $selectedText = $options[$a->selected_option] ?? "Option {$a->selected_option}";
+                $correctText = $options[$a->question->correct_option] ?? "Option {$a->question->correct_option}";
+
+                $answersContext .= '- Item '.($idx + 1)." ({$status}): {$qText}\n";
+                if (! $a->is_correct) {
+                    $answersContext .= "  Selected Choice: \"{$selectedText}\" | Correct Principle: \"{$correctText}\"\n";
                 }
             }
 
@@ -279,8 +284,8 @@ class QuizController extends Controller
                     ['role' => 'system', 'content' => $resolver->getPromptTemplate('quiz_insights', 'system')],
                     ['role' => 'user', 'content' => $userPrompt],
                 ],
-                'max_tokens' => max(600, $resolver->getMaxTokens()),
-                'temperature' => 0.5,
+                'max_tokens' => max(1200, $resolver->getMaxTokens()),
+                'temperature' => 0.4,
             ]);
 
             $rawResponse = is_string($result['response'] ?? null)

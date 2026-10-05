@@ -338,21 +338,134 @@
     .qz-verdict.pass { color: #1d9e75; }
     .qz-verdict.fail { color: #e24b4a; }
 
+    /* AI Insights Card Redesign */
     .qz-ai-box {
-        background: #fff; border: 1px solid #ebebeb; border-left: 3px solid #7f77dd;
-        border-radius: 11px; padding: 16px 20px; text-align: left; margin-bottom: 20px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 20px;
+        text-align: left;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
-
+    .qz-ai-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .qz-ai-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .qz-ai-icon-badge {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: #ede9fe;
+        color: #7c3aed;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
     .qz-ai-title {
-        font-size: 14px; font-weight: 500; color: #7f77dd;
-        letter-spacing: 0.06em; text-transform: uppercase;
-        margin: 0 0 9px; display: flex; align-items: center; gap: 5px;
+        font-size: 15px;
+        font-weight: 500;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.2;
     }
-
-    .qz-ai-sec { margin-bottom: 7px; }
-    .qz-ai-sec:last-child { margin-bottom: 0; }
-    .qz-ai-label { font-size: 14px; font-weight: 500; color: #111; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 2px; }
-    .qz-ai-value { font-size: 15px; color: #555; margin: 0; line-height: 1.5; }
+    .qz-ai-subtitle {
+        font-size: 12px;
+        color: #64748b;
+        margin: 2px 0 0 0;
+    }
+    .qz-ai-badge {
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 3px 9px;
+        border-radius: 99px;
+        background: #ede9fe;
+        color: #6d28d9;
+    }
+    .qz-ai-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .qz-ai-card {
+        border-radius: 10px;
+        padding: 12px 14px;
+        border: 1px solid;
+    }
+    .qz-ai-card-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+    }
+    .qz-ai-card-strong {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+    .qz-ai-card-strong .qz-ai-card-head {
+        color: #15803d;
+    }
+    .qz-ai-card-weak {
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+    .qz-ai-card-weak .qz-ai-card-head {
+        color: #b91c1c;
+    }
+    .qz-ai-card-rec {
+        background: #faf5ff;
+        border-color: #e9d5ff;
+    }
+    .qz-ai-card-rec .qz-ai-card-head {
+        color: #6d28d9;
+    }
+    .qz-ai-card-body {
+        font-size: 13.5px;
+        color: #334155;
+        line-height: 1.5;
+    }
+    .qz-ai-card-body ul,
+    .qz-ai-card-body ol {
+        margin: 0;
+        padding-left: 18px;
+    }
+    .qz-ai-card-body li {
+        margin-bottom: 5px;
+        color: #334155;
+    }
+    .qz-ai-card-body li:last-child {
+        margin-bottom: 0;
+    }
+    .qz-ai-card-body strong,
+    .qz-ai-card-body b {
+        font-weight: 500;
+        color: #0f172a;
+    }
+    .qz-ai-card-body p {
+        margin: 0 0 5px 0;
+    }
+    .qz-ai-card-body p:last-child {
+        margin-bottom: 0;
+    }
 
     .qz-result-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
@@ -1966,19 +2079,146 @@
             });
     }
 
+    function formatAiInsightHtml(rawText, defaultText = 'None detected') {
+        if (!rawText || !rawText.trim()) {
+            return `<p style="margin:0;font-style:italic;color:#94a3b8;">${defaultText}</p>`;
+        }
+
+        let text = rawText.trim();
+        text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/([^\n])\s*-\s+/g, "$1\n- ");
+        text = text.replace(/([^\n])\s*(\d+\.)\s+/g, "$1\n$2 ");
+
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+        let isOrdered = false;
+        let isUnordered = false;
+        let listItems = [];
+        let html = '';
+
+        for (const line of lines) {
+            const bulletMatch = line.match(/^[-*•]\s+(.*)$/);
+            const orderedMatch = line.match(/^(\d+)[.)]\s+(.*)$/);
+
+            if (bulletMatch) {
+                if (isOrdered) {
+                    html += `<ol>${listItems.join('')}</ol>`;
+                    listItems = [];
+                    isOrdered = false;
+                }
+                isUnordered = true;
+                listItems.push(`<li>${bulletMatch[1]}</li>`);
+            } else if (orderedMatch) {
+                if (isUnordered) {
+                    html += `<ul>${listItems.join('')}</ul>`;
+                    listItems = [];
+                    isUnordered = false;
+                }
+                isOrdered = true;
+                listItems.push(`<li>${orderedMatch[2]}</li>`);
+            } else {
+                if (listItems.length > 0) {
+                    html += isOrdered ? `<ol>${listItems.join('')}</ol>` : `<ul>${listItems.join('')}</ul>`;
+                    listItems = [];
+                    isOrdered = false;
+                    isUnordered = false;
+                }
+                html += `<p style="margin:0 0 5px 0;">${line}</p>`;
+            }
+        }
+
+        if (listItems.length > 0) {
+            html += isOrdered ? `<ol>${listItems.join('')}</ol>` : `<ul>${listItems.join('')}</ul>`;
+        }
+
+        return html || `<p style="margin:0;">${text}</p>`;
+    }
+
+    function renderAiInsightsCard(strong, weak, recommendation) {
+        const strongHtml = formatAiInsightHtml(strong, 'None detected');
+        const weakHtml = formatAiInsightHtml(weak, 'No critical weak areas detected');
+        const recHtml = formatAiInsightHtml(recommendation, 'Review the module summary before retaking.');
+
+        return `
+            <div class="qz-ai-header">
+                <div class="qz-ai-header-left">
+                    <span class="qz-ai-icon-badge"><i class="fas fa-brain"></i></span>
+                    <div>
+                        <h4 class="qz-ai-title">AI Performance Diagnostic</h4>
+                        <p class="qz-ai-subtitle">Personalized feedback based on your quiz responses</p>
+                    </div>
+                </div>
+                <span class="qz-ai-badge">Instant Analysis</span>
+            </div>
+            <div class="qz-ai-grid">
+                <div class="qz-ai-card qz-ai-card-strong">
+                    <div class="qz-ai-card-head">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Mastered Concepts</span>
+                    </div>
+                    <div class="qz-ai-card-body">
+                        ${strongHtml}
+                    </div>
+                </div>
+                <div class="qz-ai-card qz-ai-card-weak">
+                    <div class="qz-ai-card-head">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Priority Focus Areas</span>
+                    </div>
+                    <div class="qz-ai-card-body">
+                        ${weakHtml}
+                    </div>
+                </div>
+                <div class="qz-ai-card qz-ai-card-rec">
+                    <div class="qz-ai-card-head">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Actionable Study Plan</span>
+                    </div>
+                    <div class="qz-ai-card-body">
+                        ${recHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderAiInsightsLoading() {
+        return `
+            <div class="qz-ai-header" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">
+                <div class="qz-ai-header-left">
+                    <span class="qz-ai-icon-badge"><i class="fas fa-brain fa-pulse"></i></span>
+                    <div>
+                        <h4 class="qz-ai-title">AI Performance Diagnostic</h4>
+                        <p class="qz-ai-subtitle" style="color: #7c3aed;">Analyzing your responses and formulating tailored recommendations...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderAiInsightsMessage(message) {
+        return `
+            <div class="qz-ai-header" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">
+                <div class="qz-ai-header-left">
+                    <span class="qz-ai-icon-badge" style="background:#f1f5f9;color:#64748b;"><i class="fas fa-brain"></i></span>
+                    <div>
+                        <h4 class="qz-ai-title">AI Performance Diagnostic</h4>
+                        <p class="qz-ai-subtitle">${message}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     function showResult(pct, score, total, isLocked = false, attemptCount = 1, cachedInsights = null) {
         const passed  = pct >= 50;
         const color   = passed ? '#1d9e75' : '#e24b4a';
         const dashArr = 251;
         const dashOff = dashArr - (pct / 100 * dashArr);
 
-        const aiHtml = cachedInsights && cachedInsights.strong
-            ? `<p class="qz-ai-title"><i class="fas fa-brain"></i> AI Insights</p>
-               <div class="qz-ai-sec"><p class="qz-ai-label">Strong Areas</p><p class="qz-ai-value">${cachedInsights.strong}</p></div>
-               <div class="qz-ai-sec"><p class="qz-ai-label">Weak Areas</p><p class="qz-ai-value">${cachedInsights.weak || 'None detected'}</p></div>
-               <div class="qz-ai-sec"><p class="qz-ai-label">Recommendation</p><p class="qz-ai-value">${cachedInsights.recommendation || 'Review the module again'}</p></div>`
-            : `<p class="qz-ai-title"><i class="fas fa-brain"></i> AI Insights</p>
-               <p style="font-size: 14px;color:#aaa;margin:0;">Analyzing your performance...</p>`;
+        const aiHtml = cachedInsights && (cachedInsights.strong || cachedInsights.weak || cachedInsights.recommendation)
+            ? renderAiInsightsCard(cachedInsights.strong, cachedInsights.weak, cachedInsights.recommendation)
+            : renderAiInsightsLoading();
 
         $(quizRenderTarget).html(`
             <div class="qz-result">
@@ -2161,7 +2401,7 @@
 
     function getAI(moduleId, attemptId = null) {
         function renderAiMessage(message) {
-            $('#aiBox').html(`<p class="qz-ai-title"><i class="fas fa-brain"></i> AI Insights</p><p style="font-size: 14px;color:#aaa;margin:0;">${message}</p>`);
+            $('#aiBox').html(renderAiInsightsMessage(message));
         }
 
         const attemptKey = quizAttemptKey(moduleId, currentQuizStage);
@@ -2176,12 +2416,7 @@
         $.post(`/modules/${moduleId}/quiz/insights`, payload)
             .done(function (res) {
                 if (res.success) {
-                    $('#aiBox').html(`
-                        <p class="qz-ai-title"><i class="fas fa-brain"></i> AI Insights</p>
-                        <div class="qz-ai-sec"><p class="qz-ai-label">Strong Areas</p><p class="qz-ai-value">${res.strong || 'None detected'}</p></div>
-                        <div class="qz-ai-sec"><p class="qz-ai-label">Weak Areas</p><p class="qz-ai-value">${res.weak || 'None detected'}</p></div>
-                        <div class="qz-ai-sec"><p class="qz-ai-label">Recommendation</p><p class="qz-ai-value">${res.recommendation || 'Review the module again'}</p></div>
-                    `);
+                    $('#aiBox').html(renderAiInsightsCard(res.strong, res.weak, res.recommendation));
                     // Cache insights client-side so re-navigating to the result doesn't refetch.
                     if (quizAttempts[attemptKey]) {
                         quizAttempts[attemptKey].ai_strong = res.strong;
