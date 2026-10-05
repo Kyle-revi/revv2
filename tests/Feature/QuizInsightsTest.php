@@ -351,4 +351,46 @@ class QuizInsightsTest extends TestCase
         // Extra chatter should be stripped
         $this->assertStringNotContainsString('Actionable Next Study Step', $rec);
     }
+
+    public function test_generate_insights_invalidates_cache_with_verbatim_question_quotes(): void
+    {
+        $module = Module::factory()->create([
+            'class_id' => $this->class->id,
+            'is_quiz' => true,
+            'is_formal_assessment' => false,
+        ]);
+
+        $attempt = QuizAttempt::create([
+            'user_id' => $this->student->id,
+            'module_id' => $module->id,
+            'score' => 1,
+            'total' => 2,
+            'percentage' => 50,
+            'passed' => true,
+            'ai_strong' => '- **Cultural Influence:** You correctly answered in the question "How do cultural norms influence abnormal behavior?" where you selected "What is normal".',
+            'ai_weak' => '- **Predisposing Factors:** Your answer in the question "Why are biological factors predisposing?" was incorrect.',
+            'ai_recommendation' => '1. Review predisposing factors.',
+        ]);
+
+        $freshResponse = "Strong Areas:\n- **Cultural Influence:** You showed a clear grasp of cultural relativism.\n\nWeak Areas:\n- **Predisposing Factors:** Clarify how biological vulnerabilities increase risk.\n\nRecommendation:\n1. Review chapter on predisposing factors.";
+
+        $this->app->instance('App\\Services\\CloudflareAI', new class($freshResponse) extends CloudflareAI
+        {
+            public function __construct(private string $response = '') {}
+
+            public function run(string $model, array $payload): array
+            {
+                return ['response' => $this->response];
+            }
+        });
+
+        $this->actingAs($this->student)
+            ->postJson(route('quiz.insights', $module))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('strong', '- **Cultural Influence:** You showed a clear grasp of cultural relativism.');
+
+        $attempt->refresh();
+        $this->assertSame('- **Cultural Influence:** You showed a clear grasp of cultural relativism.', $attempt->ai_strong);
+    }
 }

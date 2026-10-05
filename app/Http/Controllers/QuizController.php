@@ -120,15 +120,20 @@ class QuizController extends Controller
         // 4. Remove "Item \d+:\s*" or "Question \d+:\s*" prefixes at bullet beginnings
         $clean = preg_replace('/(?<=(?:^|\n)[-*\d\.\s]{0,10})\b(?:Item|Question)\s*\d+\s*:\s*/i', '', $clean);
 
-        // 5. Clean up duplicate spaces or punctuation artifacts like "( )" or " ."
+        // 5. Clean up verbose question quoting preamble if present
+        $clean = preg_replace('/\s*(?:This is evident in|This is shown in)\s*(?:your|in your)?\s*(?:correct\s*)?answers?\s*(?:to|in)\s*the\s*question\s*"[^"]+"\s*(?:where you (?:correctly\s*)?selected\s*"[^"]+")?\.?/i', '', $clean);
+        $clean = preg_replace('/(?<=(?:^|\n)[-*\d\.\s]{0,10})\bYour\s+(?:in)?correct\s+answer\s+to\s+the\s+question\s*"[^"]+"\s*where\s+you\s+selected\s*"[^"]+"\s*(?:indicates|suggests)\s+that\b/i', 'This $1 that', $clean);
+        $clean = preg_replace('/\s*(?:in|to)\s*the\s*question\s*"[^"]+"\s*(?:where you (?:correctly\s*)?selected\s*"[^"]+")?/i', '', $clean);
+
+        // 6. Clean up duplicate spaces or punctuation artifacts like "( )" or " ."
         $clean = preg_replace('/\(\s*\)/', '', $clean);
         $clean = preg_replace('/\s+\./', '.', $clean);
         $clean = preg_replace('/[ \t]+/', ' ', $clean);
 
-        // 6. Strip trailing conversational chatter like "Actionable Next Study Step: ..."
+        // 7. Strip trailing conversational chatter like "Actionable Next Study Step: ..."
         $clean = preg_replace('/(?:\r?\n)\s*(?:Actionable\s+Next\s+Study\s+Step|Next\s+Step|Note)\s*:\s*.*$/is', '', $clean);
 
-        // 7. Enforce hard cap on number of bullet / numbered items
+        // 8. Enforce hard cap on number of bullet / numbered items
         if ($maxBullets !== null && $maxBullets > 0) {
             $lines = preg_split('/\r?\n/', trim($clean));
             $collected = [];
@@ -318,6 +323,7 @@ class QuizController extends Controller
         $hasExcessiveBullets = $weakBulletCount > 3;
 
         $hasReversedFactOrGrammarQuirk = preg_match('/\b(?:You has|You was|disorders are expected in their cultural context|cultural norms are universal and absolute)\b/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak.' '.(string) $attempt->ai_recommendation);
+        $hasVerbatimQuestionQuotes = preg_match('/(?:to the question|in the question)\s*"[^"]+"/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak);
 
         $hasLegacyHallucinations = $attempt->ai_strong !== null && (
             preg_match('/\((?:APA|DSM|Barlow|Wampold|Triandis|Kessler|Hart|Hooley|[A-Za-z\s&.,]+,\s*(?:19|20)\d{2})/i', $attempt->ai_strong.' '.$attempt->ai_weak)
@@ -326,6 +332,7 @@ class QuizController extends Controller
             || preg_match('/(?:^|\n)[-*\s]*Item\s*\d+\s*:/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || $hasExcessiveBullets
             || $hasReversedFactOrGrammarQuirk
+            || $hasVerbatimQuestionQuotes
         );
 
         if ($attempt->ai_strong !== null && ! $hasLegacyHallucinations) {
@@ -356,9 +363,9 @@ class QuizController extends Controller
                 $correctText = $options[$a->question->correct_option] ?? "Option {$a->question->correct_option}";
 
                 if ($a->is_correct) {
-                    $correctItems[] = "• Question: \"{$qText}\"\n  You correctly selected: \"{$correctText}\"";
+                    $correctItems[] = "• Concept: \"{$qText}\" (Correct principle: \"{$correctText}\")";
                 } else {
-                    $incorrectItems[] = "• Question: \"{$qText}\"\n  You selected: \"{$selectedText}\"\n  Correct answer choice: \"{$correctText}\"";
+                    $incorrectItems[] = "• Concept: \"{$qText}\" (Selected choice: \"{$selectedText}\" | Accurate principle: \"{$correctText}\")";
                 }
             }
 
@@ -375,7 +382,7 @@ class QuizController extends Controller
                 $answersContext .= "REPRESENTATIVE CONCEPTS ANSWERED CORRECTLY:\n".implode("\n", $sampleCorrect)."\n\n";
             }
             if (! empty($sampleIncorrect)) {
-                $answersContext .= "REPRESENTATIVE CONCEPTS MISSED (Synthesize these into 2-3 core thematic weaknesses):\n".implode("\n", $sampleIncorrect);
+                $answersContext .= "REPRESENTATIVE CONCEPTS MISSED (Synthesize these into 2-3 core thematic weaknesses without quoting questions):\n".implode("\n", $sampleIncorrect);
             }
 
             $userPrompt = $resolver->renderTemplate($resolver->getPromptTemplate('quiz_insights', 'user_template'), [
