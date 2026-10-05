@@ -36,8 +36,8 @@
         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px 24px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                 <div>
-                    <span style="font-size: 13px; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Overall Post-Test Performance</span>
-                    <h3 style="margin: 4px 0 0 0; font-size: 20px; font-weight: 700; color: #1e293b;">
+                    <span style="font-size: 13px; font-weight: 500; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Overall Post-Test Performance</span>
+                    <h3 style="margin: 4px 0 0 0; font-size: 20px; font-weight: 500; color: #1e293b;">
                         Best Score: {{ (int) round($overallPostTest['best_percentage']) }}%
                     </h3>
                 </div>
@@ -114,7 +114,7 @@
                 </div>
             </div>
             <div style="flex-shrink: 0;">
-                <a href="{{ route('student.mock-boards.readiness', $mockBoard) }}" class="btn-readiness" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 9px; font-weight: 600; font-size: 13.5px; text-decoration: none; background: #245E55; color: #ffffff; white-space: nowrap; box-shadow: 0 2px 4px rgba(36,94,85,0.25); transition: all 0.2s ease;">
+                <a href="{{ route('student.mock-boards.readiness', $mockBoard) }}" class="btn-readiness" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 9px; font-weight: 500; font-size: 13.5px; text-decoration: none; background: #245E55; color: #ffffff; white-space: nowrap; box-shadow: 0 2px 4px rgba(36,94,85,0.25); transition: all 0.2s ease;">
                     <i class="fas fa-file-invoice"></i> View Readiness Report
                 </a>
             </div>

@@ -168,7 +168,7 @@
                                     <td style="text-align: center;">
                                         {{ $d['pre_score'] !== null ? $d['pre_score'].'%' : '—' }}
                                     </td>
-                                    <td style="text-align: center; font-weight: 700; color: #1e293b;">
+                                    <td style="text-align: center; font-weight: 500; color: #1e293b;">
                                         {{ $d['post_score'] }}%
                                     </td>
                                     <td style="text-align: center;">
@@ -421,6 +421,17 @@
         font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         color: #1e293b;
     }
+    .readiness-page-wrapper strong,
+    .readiness-page-wrapper b,
+    .readiness-page-wrapper h1,
+    .readiness-page-wrapper h2,
+    .readiness-page-wrapper h3,
+    .readiness-page-wrapper h4,
+    .readiness-page-wrapper h5,
+    .readiness-page-wrapper h6,
+    .readiness-page-wrapper th {
+        font-weight: 500;
+    }
 
     /* HEADER CARD */
     .readiness-header-card {
@@ -439,7 +450,7 @@
     .report-badge {
         display: inline-block;
         font-size: 11.5px;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.8px;
         padding: 4px 10px;
@@ -450,7 +461,7 @@
     }
     .report-title {
         font-size: 26px;
-        font-weight: 800;
+        font-weight: 500;
         color: #0f172a;
         margin: 0 0 10px;
         letter-spacing: -0.5px;
@@ -481,13 +492,13 @@
         display: block;
         font-size: 11.5px;
         text-transform: uppercase;
-        font-weight: 600;
+        font-weight: 500;
         color: #94a3b8;
         letter-spacing: 0.5px;
     }
     .quick-kpi-value {
         font-size: 26px;
-        font-weight: 800;
+        font-weight: 500;
         color: #1e293b;
     }
 
@@ -499,7 +510,7 @@
         padding: 9px 16px;
         border-radius: 9px;
         font-size: 13.5px;
-        font-weight: 600;
+        font-weight: 500;
         color: #475569;
         background: #ffffff;
         border: 1px solid #cbd5e1;
@@ -517,7 +528,7 @@
         padding: 9px 16px;
         border-radius: 9px;
         font-size: 13.5px;
-        font-weight: 600;
+        font-weight: 500;
         color: #065f46;
         background: #ecfdf5;
         border: 1px solid #a7f3d0;
@@ -534,7 +545,7 @@
         padding: 9px 18px;
         border-radius: 9px;
         font-size: 13.5px;
-        font-weight: 600;
+        font-weight: 500;
         color: #ffffff;
         background: #245E55;
         border: none;
@@ -569,7 +580,7 @@
         justify-content: space-between;
         align-items: center;
         font-size: 13.5px;
-        font-weight: 700;
+        font-weight: 500;
         color: #475569;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -579,7 +590,7 @@
         padding: 5px 12px;
         border-radius: 99px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 500;
         border: 1px solid;
     }
     .badge-status.positive { background: #e6f4f1; color: #166534; border-color: #86efac; }
@@ -591,7 +602,7 @@
         padding: 4px 10px;
         border-radius: 99px;
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .score-display {
@@ -602,7 +613,7 @@
     }
     .big-score {
         font-size: 54px;
-        font-weight: 800;
+        font-weight: 500;
         line-height: 1;
         color: #0f172a;
         letter-spacing: -1.5px;
@@ -615,11 +626,11 @@
     .score-benchmark {
         font-size: 13.5px;
         color: #64748b;
-        font-weight: 600;
+        font-weight: 500;
     }
     .score-gap {
         font-size: 13.5px;
-        font-weight: 700;
+        font-weight: 500;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -664,7 +675,7 @@
     }
     .marker-label {
         font-size: 10.5px;
-        font-weight: 800;
+        font-weight: 500;
         color: #0f172a;
     }
     .kpi-description {
@@ -691,13 +702,13 @@
     }
     .metric-sublabel {
         font-size: 11.5px;
-        font-weight: 600;
+        font-weight: 500;
         text-transform: uppercase;
         color: #64748b;
     }
     .metric-subval {
         font-size: 24px;
-        font-weight: 800;
+        font-weight: 500;
         color: #0f172a;
     }
     .growth-delta-box {
@@ -708,13 +719,13 @@
     .growth-delta-box.negative .delta-num { color: #dc2626; }
     .delta-num {
         font-size: 26px;
-        font-weight: 800;
+        font-weight: 500;
         display: block;
         line-height: 1.1;
     }
     .delta-label {
         font-size: 11.5px;
-        font-weight: 600;
+        font-weight: 500;
         color: #64748b;
     }
     .consistency-note {
@@ -753,7 +764,7 @@
     }
     .card-box-title {
         font-size: 18px;
-        font-weight: 800;
+        font-weight: 500;
         color: #0f172a;
         margin: 0 0 4px;
         display: flex;
@@ -778,7 +789,7 @@
     .domain-table th {
         background: #f8fafc;
         color: #475569;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
         font-size: 11px;
         letter-spacing: 0.5px;
@@ -799,7 +810,7 @@
         color: #94a3b8;
     }
     .change-tag {
-        font-weight: 700;
+        font-weight: 500;
         padding: 2px 6px;
         border-radius: 4px;
         font-size: 12px;
@@ -824,7 +835,7 @@
 
     .domain-status-badge {
         font-size: 11px;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
         padding: 3px 8px;
         border-radius: 6px;
@@ -878,7 +889,7 @@
     .peer-stat-label {
         display: block;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
         color: #64748b;
         letter-spacing: 0.5px;
@@ -886,7 +897,7 @@
     }
     .peer-stat-val {
         font-size: 26px;
-        font-weight: 800;
+        font-weight: 500;
         color: #0f172a;
         line-height: 1.1;
     }
@@ -918,7 +929,7 @@
     }
     .historical-title {
         font-size: 13.5px;
-        font-weight: 800;
+        font-weight: 500;
         color: #0369a1;
         margin: 0 0 12px;
         display: flex;
@@ -934,13 +945,13 @@
     .hist-label {
         display: block;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         color: #0284c7;
         text-transform: uppercase;
     }
     .hist-num {
         font-size: 22px;
-        font-weight: 800;
+        font-weight: 500;
         color: #0c4a6e;
     }
     .hist-detail {
@@ -977,7 +988,7 @@
         align-items: center;
         gap: 8px;
         font-size: 13px;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         padding-bottom: 12px;
@@ -996,7 +1007,7 @@
     .domain-tag {
         display: inline-block;
         font-size: 10.5px;
-        font-weight: 700;
+        font-weight: 500;
         color: #245E55;
         background: #e6f4f1;
         padding: 2px 7px;
@@ -1005,7 +1016,7 @@
     }
     .item-stem {
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
         color: #1e293b;
         margin: 0 0 6px;
         line-height: 1.4;
@@ -1027,7 +1038,7 @@
     }
     .ai-generated-badge {
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 500;
         color: #7c3aed;
         background: #ede9fe;
         padding: 4px 10px;
@@ -1066,7 +1077,7 @@
     }
     .ai-subcard-title {
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 500;
         text-transform: uppercase;
         color: #334155;
         letter-spacing: 0.5px;
@@ -1085,7 +1096,7 @@
     }
     .ai-priority-tag {
         font-size: 12.5px;
-        font-weight: 700;
+        font-weight: 500;
         background: #fef2f2;
         color: #991b1b;
         border: 1px solid #fecaca;
@@ -1132,7 +1143,7 @@
         align-items: center;
         justify-content: center;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 500;
         flex-shrink: 0;
     }
     .step-body {
