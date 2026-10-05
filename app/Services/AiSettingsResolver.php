@@ -52,7 +52,23 @@ class AiSettingsResolver
 
     public function getPromptTemplate(string $feature, string $type): string
     {
-        return (string) $this->getGlobal("prompt.{$feature}.{$type}", '');
+        $template = (string) $this->getGlobal("prompt.{$feature}.{$type}", '');
+
+        // If stored template is the legacy version that encouraged citing questions or lacked strict rules,
+        // use the updated strict global default.
+        if ($feature === 'quiz_insights' && $type === 'system') {
+            if (! str_contains($template, 'STRICT RULES') || str_contains($template, 'Cite specific concepts')) {
+                return (string) (self::GLOBAL_DEFAULTS['prompt.quiz_insights.system'] ?? $template);
+            }
+        }
+
+        if ($feature === 'quiz_insights' && $type === 'user_template') {
+            if (str_starts_with(trim($template), 'Student scored') || ! str_contains($template, 'MAX 3 BULLETS PER SECTION')) {
+                return (string) (self::GLOBAL_DEFAULTS['prompt.quiz_insights.user_template'] ?? $template);
+            }
+        }
+
+        return $template;
     }
 
     public function getModel(): string

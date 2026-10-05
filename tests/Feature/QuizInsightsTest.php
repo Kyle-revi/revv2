@@ -197,7 +197,7 @@ class QuizInsightsTest extends TestCase
             'is_correct' => true,
         ]);
 
-        $mockResponse = "Strong Areas:\n- Item 1: The student demonstrated an understanding of protective factors (APA, 2020, p. 123) and understanding the correct principle of assessing behavior in isolation from systemic factors. They have shown solid grasp, which will help them succeed. This shows that You have grasped the core idea.\n\nWeak Areas:\n- Item 2: The student incorrectly identified developmental psychopathology (Wampold, 2001, p. 12). They selected an answer that was incomplete. you selected options prematurely. You needs to practice more because You struggles with their assessments. Review cultural norms and their variability, and practice how to distinguish them.\n\nRecommendation:\n1. Re-read the principles of developmental psychopathology (APA, 2020, p. 145) to solidify their understanding.\n2. To prevent repeating the mistake, You should practice case studies.\n3. Before retaking the test, You should review cultural norms.";
+        $mockResponse = "Strong Areas:\n- Item 1: The student demonstrated an understanding of protective factors (APA, 2020, p. 123) and understanding the correct principle of assessing behavior in isolation from systemic factors. You demonstrated mastery of the concept that behavior should be assessed in isolation from systemic factors. You correctly applied the principle that behavior should be evaluated independently of systemic influences. They have shown solid grasp, which will help them succeed. This shows that You have grasped the core idea.\n\nWeak Areas:\n- Item 2: The student incorrectly identified developmental psychopathology (Wampold, 2001, p. 12). They selected an answer that was incomplete. you selected options prematurely. You needs to practice more because You struggles with their assessments. Review cultural norms and their variability, and practice how to distinguish them.\n\nRecommendation:\n1. Re-read the principles of developmental psychopathology (APA, 2020, p. 145) to solidify their understanding.\n2. To prevent repeating the mistake, You should practice case studies.\n3. Before retaking the test, You should review cultural norms.";
 
         $this->app->instance('App\\Services\\CloudflareAI', new class($mockResponse) extends CloudflareAI
         {
@@ -247,6 +247,10 @@ class QuizInsightsTest extends TestCase
 
         // Verify safeguard against inverted isolated assessment claim
         $this->assertStringNotContainsString('assessing behavior in isolation', $strong);
+        $this->assertStringNotContainsString('behavior should be assessed in isolation', $strong);
+        $this->assertStringNotContainsString('evaluated independently of systemic', $strong);
+        $this->assertStringContainsString('behavior must be assessed in relation to systemic', $strong);
+        $this->assertStringContainsString('behavior must be evaluated in relation to systemic', $strong);
 
         // Verify sentence-start capitalization for "You"
         $this->assertStringContainsString('You selected', $weak);

@@ -131,10 +131,15 @@ class QuizController extends Controller
         $clean = preg_replace('/\b(help|guide|allow|enable|let|for|with|to)\s+You\b/', '$1 you', $clean);
         $clean = preg_replace('/\bfor them to\b/i', 'for you to', $clean);
 
-        // Safeguard against factual reversals on negative questions
+        // Safeguard against factual reversals on negative questions (especially contextual assessment vs isolation)
+        $clean = preg_replace('/\b(?:that\s+)?behavior\s+should\s+be\s+(?:assessed|evaluated|studied|viewed)\s+in\s+isolation\s+(?:from\s+systemic\s+factors)?\b/i', 'that behavior must be assessed in relation to systemic and contextual factors, rather than in isolation', $clean);
+        $clean = preg_replace('/\bbehavior\s+should\s+be\s+(?:evaluated|assessed)\s+independently\s+of\s+systemic\s+(?:factors|influences)\b/i', 'behavior must be evaluated in relation to systemic and contextual influences', $clean);
+        $clean = preg_replace('/\b(?:evaluated|assessed)\s+independently\s+of\s+systemic\s+(?:factors|influences)\b/i', 'evaluated in relation to systemic influences', $clean);
+        $clean = preg_replace('/\b(?:assessing|evaluating)\s+behavior\s+in\s+isolation\s+(?:from\s+systemic\s+factors)?\b/i', 'assessing behavior in relation to systemic and contextual factors', $clean);
+        $clean = preg_replace('/\b(?:correct\s+)?principle\s+of\s+assessing\s+behavior\s+in\s+isolation\b/i', 'principle of assessing behavior in relation to systemic factors', $clean);
         $clean = preg_replace('/\bunderstanding the correct principle of assessing behavior in isolation\b/i', 'understanding the distinction between isolated and systemic behavior assessment', $clean);
-        $clean = preg_replace('/\bcorrect principle of assessing behavior in isolation\b/i', 'principle of assessing behavior in relation to systemic factors', $clean);
-        $clean = preg_replace('/\bprinciple of assessing behavior in isolation\b/i', 'principle of assessing behavior in relation to systemic factors', $clean);
+        $clean = preg_replace('/\bconcept that behavior should be assessed in isolation\b/i', 'concept that behavior must be assessed in relation to systemic factors', $clean);
+        $clean = preg_replace('/\bassessed in isolation from systemic factors\b/i', 'assessed in relation to systemic factors', $clean);
 
         // Ensure "You" / "Your" is capitalized at the start of sentences
         $clean = preg_replace('/(?<=(?:\.|\?|\!)\s|\n|^)you\b/', 'You', $clean);
@@ -356,7 +361,7 @@ class QuizController extends Controller
         $weakBulletCount = substr_count((string) $attempt->ai_weak, "\n- ") + (str_starts_with(trim((string) $attempt->ai_weak), '- ') ? 1 : 0);
         $hasExcessiveBullets = $weakBulletCount > 3;
 
-        $hasReversedFactOrGrammarQuirk = preg_match('/\b(?:You has|You was|You needs|assessing behavior in isolation|disorders are expected in their cultural context|cultural norms are universal and absolute)\b/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak.' '.(string) $attempt->ai_recommendation);
+        $hasReversedFactOrGrammarQuirk = preg_match('/\b(?:You has|You was|You needs|assessed? in isolation|evaluat(?:ed|ing) independently of systemic|assessing behavior in isolation|disorders are expected in their cultural context|cultural norms are universal and absolute)\b/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak.' '.(string) $attempt->ai_recommendation);
         $hasVerbatimQuestionQuotes = preg_match('/(?:to the question|in the question)\s*"[^"]+"/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak);
 
         $hasLegacyHallucinations = $attempt->ai_strong !== null && (
@@ -386,7 +391,8 @@ class QuizController extends Controller
         try {
             $resolver = app(AiSettingsResolver::class);
             $ai = app(CloudflareAI::class);
-            $correctItems = [];
+            $positiveCorrectItems = [];
+            $negativeCorrectItems = [];
             $incorrectItems = [];
 
             foreach ($answers as $idx => $a) {
@@ -401,9 +407,9 @@ class QuizController extends Controller
 
                 if ($a->is_correct) {
                     if ($isNegativeStem) {
-                        $correctItems[] = "• Concept: \"{$qText}\" (You correctly identified the FALSE statement on test: \"{$correctText}\")";
+                        $negativeCorrectItems[] = "• Question: \"{$qText}\" (Student correctly identified that \"{$correctText}\" is FALSE/UNTRUE in psychology. Stress the actual correct rule: behavior must be assessed in its systemic/environmental context, NEVER in isolation).";
                     } else {
-                        $correctItems[] = "• Concept: \"{$qText}\" (Correct principle: \"{$correctText}\")";
+                        $positiveCorrectItems[] = "• Concept: \"{$qText}\" (Correct principle: \"{$correctText}\")";
                     }
                 } else {
                     if ($isNegativeStem) {
@@ -414,7 +420,9 @@ class QuizController extends Controller
                 }
             }
 
-            $sampleCorrect = array_slice($correctItems, 0, 4);
+            // Prioritize positive conceptual items for Strong Areas so the model never inverts a negative-stem distractor
+            $allCorrectItems = array_merge($positiveCorrectItems, $negativeCorrectItems);
+            $sampleCorrect = array_slice($allCorrectItems, 0, 4);
             $sampleIncorrect = array_slice($incorrectItems, 0, 6);
 
             $totalCount = $answers->count();
