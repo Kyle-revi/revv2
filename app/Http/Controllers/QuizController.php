@@ -117,6 +117,10 @@ class QuizController extends Controller
         $clean = preg_replace('/\b(help|guide|allow) them\b/i', '$1 you', $clean);
         $clean = preg_replace('/\bfor them to\b/i', 'for you to', $clean);
 
+        // Ensure "You" / "Your" is capitalized at the start of sentences
+        $clean = preg_replace('/(?<=(?:\.|\?|\!)\s|\n|^)you\b/', 'You', $clean);
+        $clean = preg_replace('/(?<=(?:\.|\?|\!)\s|\n|^)your\b/', 'Your', $clean);
+
         // 4. Remove "Item \d+:\s*" or "Question \d+:\s*" prefixes at bullet beginnings
         $clean = preg_replace('/(?<=(?:^|\n)[-*\d\.\s]{0,10})\b(?:Item|Question)\s*\d+\s*:\s*/i', '', $clean);
 
