@@ -197,7 +197,7 @@ class QuizInsightsTest extends TestCase
             'is_correct' => true,
         ]);
 
-        $mockResponse = "Strong Areas:\n- Item 1: The student demonstrated an understanding of protective factors (APA, 2020, p. 123).\n\nWeak Areas:\n- Item 2: The student incorrectly identified developmental psychopathology (Wampold, 2001, p. 12).\n\nRecommendation:\n1. Re-read the principles of developmental psychopathology (APA, 2020, p. 145).\n2. Review case studies.";
+        $mockResponse = "Strong Areas:\n- Item 1: The student demonstrated an understanding of protective factors (APA, 2020, p. 123). They have shown solid grasp, which will help them succeed.\n\nWeak Areas:\n- Item 2: The student incorrectly identified developmental psychopathology (Wampold, 2001, p. 12). Review cultural norms and their variability, and practice how to distinguish them.\n\nRecommendation:\n1. Re-read the principles of developmental psychopathology (APA, 2020, p. 145) to solidify their understanding.\n2. Review case studies.";
 
         $this->app->instance('App\\Services\\CloudflareAI', new class($mockResponse) extends CloudflareAI
         {
@@ -228,6 +228,13 @@ class QuizInsightsTest extends TestCase
         $this->assertStringContainsString('You demonstrated', $strong);
         $this->assertStringNotContainsString('The student incorrectly', $weak);
         $this->assertStringContainsString('You incorrectly', $weak);
+
+        // Verify pronoun conversions and preservation of concept nouns
+        $this->assertStringContainsString('you have shown', $strong);
+        $this->assertStringContainsString('help you succeed', $strong);
+        $this->assertStringContainsString('their variability', $weak);
+        $this->assertStringContainsString('distinguish them', $weak);
+        $this->assertStringContainsString('solidify your understanding', $rec);
 
         // Verify "Item 1:" / "Item 2:" prefixes are removed
         $this->assertStringNotContainsString('Item 1:', $strong);

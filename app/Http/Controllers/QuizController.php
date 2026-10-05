@@ -112,13 +112,10 @@ class QuizController extends Controller
         // Fix grammar artifacts from replacements (e.g. "You has grasped" -> "You have grasped")
         $clean = preg_replace('/\bYou has\b/i', 'You have', $clean);
         $clean = preg_replace('/\bYou was\b/i', 'You were', $clean);
-        $clean = preg_replace('/\bthey have shown\b/i', 'you have shown', $clean);
-        $clean = preg_replace('/\bthey have\b/i', 'you have', $clean);
-        $clean = preg_replace('/\bthey showed\b/i', 'you showed', $clean);
-        $clean = preg_replace('/\btheir understanding\b/i', 'your understanding', $clean);
-        $clean = preg_replace('/\btheir\b/i', 'your', $clean);
-        $clean = preg_replace('/\bthem\b/i', 'you', $clean);
-        $clean = preg_replace('/\bthemselves\b/i', 'yourself', $clean);
+        $clean = preg_replace('/\bthey (have shown|have|struggled|showed|demonstrated|selected|scored|need)\b/i', 'you $1', $clean);
+        $clean = preg_replace('/\btheir (understanding|performance|score|answers?|knowledge|comprehension|foundation|mistakes?)\b/i', 'your $1', $clean);
+        $clean = preg_replace('/\b(help|guide|allow) them\b/i', '$1 you', $clean);
+        $clean = preg_replace('/\bfor them to\b/i', 'for you to', $clean);
 
         // 4. Remove "Item \d+:\s*" or "Question \d+:\s*" prefixes at bullet beginnings
         $clean = preg_replace('/(?<=(?:^|\n)[-*\d\.\s]{0,10})\b(?:Item|Question)\s*\d+\s*:\s*/i', '', $clean);
