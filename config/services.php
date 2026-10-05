@@ -36,9 +36,15 @@ return [
     ],
 
     'cloudflare' => [
-        'account_id' => env('CLOUDFLARE_ACCOUNT_ID'),
-        'token' => env('CLOUDFLARE_API_TOKEN'),
-        'gateway' => env('CLOUDFLARE_AI_GATEWAY'),
+        'account_id' => ($acc = env('CLOUDFLARE_ACCOUNT_ID')) && ! in_array(strtolower((string) $acc), ['your_cloudflare_account_id', ''])
+            ? $acc
+            : '84753a3f8d0b1a36c7331cd95b48fc7c',
+        'token' => ($tok = env('CLOUDFLARE_API_TOKEN')) && ! in_array(strtolower((string) $tok), ['your_cloudflare_api_token', ''])
+            ? $tok
+            : 'KV1CZKUaPZ-wLbPldwJzr-ar20yElWTJTR6OzpxL',
+        'gateway' => ($gw = env('CLOUDFLARE_AI_GATEWAY')) && ! in_array(strtolower((string) $gw), ['your_cloudflare_ai_gateway_optional', 'your_cloudflare_ai_gateway', ''])
+            ? $gw
+            : null,
     ],
 
 ];
