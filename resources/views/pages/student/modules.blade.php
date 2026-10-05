@@ -2148,7 +2148,12 @@
                         <p class="qz-ai-subtitle">Personalized feedback based on your quiz responses</p>
                     </div>
                 </div>
-                <span class="qz-ai-badge">Instant Analysis</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button type="button" class="qz-btn qz-btn-outline" style="font-size:12px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#334155;font-weight:500;" onclick="refreshCurrentAiInsights(this)">
+                        <i class="fas fa-sync-alt"></i> Refresh Insight
+                    </button>
+                    <span class="qz-ai-badge">Instant Analysis</span>
+                </div>
             </div>
             <div class="qz-ai-grid">
                 <div class="qz-ai-card qz-ai-card-strong">
@@ -2399,7 +2404,21 @@
         `);
     }
 
-    function getAI(moduleId, attemptId = null) {
+    function refreshCurrentAiInsights(btn) {
+        if (!currentModuleId) return;
+        const attemptKey = quizAttemptKey(currentModuleId, currentQuizStage);
+        const attemptId = quizAttempts[attemptKey]?.attempt_id || null;
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
+        }
+
+        $('#aiBox').html(renderAiInsightsLoading());
+        getAI(currentModuleId, attemptId, true);
+    }
+
+    function getAI(moduleId, attemptId = null, forceRefresh = false) {
         function renderAiMessage(message) {
             $('#aiBox').html(renderAiInsightsMessage(message));
         }
@@ -2411,6 +2430,9 @@
         }
         if (currentQuizStage) {
             payload.quiz_stage = currentQuizStage;
+        }
+        if (forceRefresh) {
+            payload.force_refresh = 1;
         }
 
         $.post(`/modules/${moduleId}/quiz/insights`, payload)

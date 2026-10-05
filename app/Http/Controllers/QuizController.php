@@ -369,7 +369,9 @@ class QuizController extends Controller
             || $hasVerbatimQuestionQuotes
         );
 
-        if ($attempt->ai_strong !== null && ! $hasLegacyHallucinations) {
+        $forceRefresh = $request->boolean('force_refresh') || $request->boolean('refresh');
+
+        if (! $forceRefresh && $attempt->ai_strong !== null && ! $hasLegacyHallucinations) {
             return response()->json([
                 'success' => true,
                 'strong' => $attempt->ai_strong,

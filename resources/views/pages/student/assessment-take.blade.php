@@ -1315,7 +1315,12 @@ function beginQuizUi() {
                         <p class="qz-ai-subtitle">Personalized feedback based on your quiz responses</p>
                     </div>
                 </div>
-                <span class="qz-ai-badge">Instant Analysis</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button type="button" class="qz-btn qz-btn-outline" style="font-size:12px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#334155;font-weight:500;" onclick="refreshCurrentAiInsights(this)">
+                        <i class="fas fa-sync-alt"></i> Refresh Insight
+                    </button>
+                    <span class="qz-ai-badge">Instant Analysis</span>
+                </div>
             </div>
             <div class="qz-ai-grid">
                 <div class="qz-ai-card qz-ai-card-strong">
@@ -1445,18 +1450,24 @@ function beginQuizUi() {
 
     }
 
+    function refreshCurrentAiInsights(btn) {
+        var box = document.getElementById('aiBox');
+        if (box) {
+            box.innerHTML = renderAiInsightsLoading();
+        }
+        getAI(true);
+    }
 
-
-    function getAI() {
+    function getAI(forceRefresh = false) {
+        var bodyData = { attempt_id: currentAttemptId };
+        if (forceRefresh) {
+            bodyData.force_refresh = 1;
+        }
 
         fetch('/modules/' + moduleId + '/quiz/insights', {
-
             method: 'POST',
-
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-
-            body: JSON.stringify({ attempt_id: currentAttemptId }),
-
+            body: JSON.stringify(bodyData),
         })
 
         .then(function (r) { return r.json(); })

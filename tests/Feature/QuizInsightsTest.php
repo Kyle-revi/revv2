@@ -414,4 +414,52 @@ class QuizInsightsTest extends TestCase
         $attempt->refresh();
         $this->assertSame('- **Cultural Influence:** You showed a clear grasp of cultural relativism.', $attempt->ai_strong);
     }
+
+    public function test_generate_insights_force_refresh_bypasses_valid_cache(): void
+    {
+        $module = Module::factory()->create([
+            'class_id' => $this->class->id,
+            'is_quiz' => true,
+            'is_formal_assessment' => false,
+        ]);
+
+        $attempt = QuizAttempt::create([
+            'user_id' => $this->student->id,
+            'module_id' => $module->id,
+            'score' => 1,
+            'total' => 2,
+            'percentage' => 50,
+            'passed' => true,
+            'ai_strong' => '- **Previous Concept:** Already cached.',
+            'ai_weak' => '- **Previous Weakness:** Already cached.',
+            'ai_recommendation' => '1. Previous recommendation.',
+        ]);
+
+        $refreshedResponse = "Strong Areas:\n- **New Concept:** Freshly generated insight.\n\nWeak Areas:\n- **New Weakness:** Freshly generated insight.\n\nRecommendation:\n1. Fresh action step.";
+
+        $this->app->instance('App\\Services\\CloudflareAI', new class($refreshedResponse) extends CloudflareAI
+        {
+            public function __construct(private string $response = '') {}
+
+            public function run(string $model, array $payload): array
+            {
+                return ['response' => $this->response];
+            }
+        });
+
+        // Calling without force_refresh should return cached
+        $this->actingAs($this->student)
+            ->postJson(route('quiz.insights', $module))
+            ->assertOk()
+            ->assertJsonPath('strong', '- **Previous Concept:** Already cached.');
+
+        // Calling with force_refresh should re-run AI and update
+        $this->actingAs($this->student)
+            ->postJson(route('quiz.insights', $module), ['force_refresh' => 1])
+            ->assertOk()
+            ->assertJsonPath('strong', '- **New Concept:** Freshly generated insight.');
+
+        $attempt->refresh();
+        $this->assertSame('- **New Concept:** Freshly generated insight.', $attempt->ai_strong);
+    }
 }
