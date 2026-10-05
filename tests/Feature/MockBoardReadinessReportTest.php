@@ -13,6 +13,7 @@ use App\Models\QuizAnswer;
 use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
 use App\Models\User;
+use App\Services\MockBoardReadinessService;
 use App\Services\MockBoardStatisticsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -594,5 +595,123 @@ class MockBoardReadinessReportTest extends TestCase
         $this->assertEmpty($report->ai_action_plan['review_topics']);
         $this->assertStringNotContainsString('ASC 606', implode(' ', $report->ai_action_plan['study_steps']));
         $this->assertStringContainsString('Spaced Retrieval', implode(' ', $report->ai_action_plan['study_steps']));
+    }
+
+    public function test_student_with_low_score_has_priority_focus_area_and_weakest_domain(): void
+    {
+        $data = $this->createBoardAndStudent();
+        $student = $data['student'];
+        $board = $data['board'];
+        $preModule = $data['preTestModule'];
+        $postModule = $data['postTestModule'];
+
+        // Pre-test questions
+        for ($i = 1; $i <= 5; $i++) {
+            QuizQuestion::create([
+                'module_id' => $preModule->id,
+                'question_text' => "Pre FAR Q{$i}",
+                'options' => ['A' => 'Opt A', 'B' => 'Opt B'],
+                'correct_option' => 'A',
+                'domain' => 'Financial Accounting and Reporting',
+                'order' => $i,
+            ]);
+            QuizQuestion::create([
+                'module_id' => $preModule->id,
+                'question_text' => "Pre Auditing Q{$i}",
+                'options' => ['A' => 'Opt A', 'B' => 'Opt B'],
+                'correct_option' => 'A',
+                'domain' => 'Auditing and Assurance',
+                'order' => $i + 5,
+            ]);
+        }
+
+        // Post-test questions
+        $postQuestions = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $postQuestions[] = QuizQuestion::create([
+                'module_id' => $postModule->id,
+                'question_text' => "Post FAR Q{$i}",
+                'options' => ['A' => 'Opt A', 'B' => 'Opt B'],
+                'correct_option' => 'A',
+                'domain' => 'Financial Accounting and Reporting',
+                'order' => $i,
+            ]);
+        }
+        for ($i = 1; $i <= 5; $i++) {
+            $postQuestions[] = QuizQuestion::create([
+                'module_id' => $postModule->id,
+                'question_text' => "Post Auditing Q{$i}",
+                'options' => ['A' => 'Opt A', 'B' => 'Opt B'],
+                'correct_option' => 'A',
+                'domain' => 'Auditing and Assurance',
+                'order' => $i + 5,
+            ]);
+        }
+
+        // Pre-test attempt: 50%
+        $preAttempt = QuizAttempt::create([
+            'user_id' => $student->id,
+            'module_id' => $preModule->id,
+            'mock_board_id' => $board->id,
+            'score' => 5,
+            'total' => 10,
+            'percentage' => 50.0,
+            'passed' => false,
+            'status' => 'completed',
+        ]);
+        MockBoardAttempt::create([
+            'user_id' => $student->id,
+            'mock_board_id' => $board->id,
+            'phase_type' => 'pre_test',
+            'quiz_attempt_id' => $preAttempt->id,
+            'score' => 5,
+            'total' => 10,
+            'percentage' => 50.0,
+            'passed' => false,
+        ]);
+
+        // Post-test attempt: 3/10 (30%) -> FAR: 2/5 (40%), Auditing: 1/5 (20%)
+        $postAttempt = QuizAttempt::create([
+            'user_id' => $student->id,
+            'module_id' => $postModule->id,
+            'mock_board_id' => $board->id,
+            'score' => 3,
+            'total' => 10,
+            'percentage' => 30.0,
+            'passed' => false,
+            'status' => 'completed',
+        ]);
+
+        // Student answers: correct for Q0, Q2 (FAR) and Q5 (Auditing)
+        $correctIndices = [0, 2, 5];
+        foreach ($postQuestions as $idx => $q) {
+            $isCorrect = in_array($idx, $correctIndices, true);
+            QuizAnswer::create([
+                'attempt_id' => $postAttempt->id,
+                'question_id' => $q->id,
+                'selected_option' => $isCorrect ? 'A' : 'B',
+                'is_correct' => $isCorrect,
+            ]);
+        }
+
+        MockBoardAttempt::create([
+            'user_id' => $student->id,
+            'mock_board_id' => $board->id,
+            'phase_type' => 'pre_boards',
+            'quiz_attempt_id' => $postAttempt->id,
+            'score' => 3,
+            'total' => 10,
+            'percentage' => 30.0,
+            'passed' => false,
+        ]);
+
+        $service = app(MockBoardReadinessService::class);
+        $report = $service->getOrGenerateReport($board, $student, true);
+
+        $this->assertEquals(30.0, $report->readiness_percentage);
+        $this->assertEquals('low', $report->tier);
+        $this->assertEquals(45.0, $report->gap_percentage); // 75 - 30
+        $this->assertEquals('Auditing and Assurance', $report->domain_breakdown['weakest_domain']);
+        $this->assertContains('Auditing and Assurance', $report->ai_action_plan['priority_domains']);
     }
 }
