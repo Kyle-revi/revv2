@@ -129,6 +129,121 @@ class PerformanceStudentItemAnalysisTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_teacher_can_view_assessment_item_analysis_with_attempt_limits_and_grants(): void
+    {
+        $teacher = $this->createUser([
+            'role' => 'teacher',
+            'program' => 'teacher',
+        ]);
+
+        $student = $this->createUser([
+            'role' => 'student',
+            'program' => 'educ',
+        ]);
+
+        $class = ClassModel::query()->create([
+            'name' => 'Assessment Class',
+            'code' => 'CLS300',
+            'school_year' => now()->year,
+            'description' => 'Class for assessment limits',
+            'created_by' => $teacher->id,
+        ]);
+
+        $class->students()->attach($student->id);
+
+        $module = Module::query()->create([
+            'class_id' => $class->id,
+            'title' => 'Formal Exam 1',
+            'description' => 'Exam description',
+            'is_formal_assessment' => true,
+            'is_active' => true,
+            'max_attempts' => 2,
+        ]);
+
+        $attempt = QuizAttempt::query()->create([
+            'user_id' => $student->id,
+            'module_id' => $module->id,
+            'score' => 8,
+            'total' => 10,
+            'percentage' => 80,
+            'passed' => true,
+            'attempt_count' => 1,
+            'status' => 'completed',
+        ]);
+
+        // Teacher grants 1 extra attempt
+        $this->actingAs($teacher)
+            ->postJson(route('quiz.grant.attempt', [$module, $student]), [
+                'extra_attempts' => 1,
+                'reason' => 'Granted retake',
+            ])
+            ->assertOk()
+            ->assertJsonPath('extra_granted', 1)
+            ->assertJsonPath('total_allowed', 3);
+
+        $response = $this->actingAs($teacher)
+            ->getJson(route('student.performance.student-item-analysis', [
+                'class' => $class->id,
+                'student' => $student->id,
+                'type' => 'assessment',
+                'module_id' => $module->id,
+            ]));
+
+        $response->assertOk();
+        $response->assertJsonPath('attempt.is_formal_assessment', true);
+        $response->assertJsonPath('attempt.attempts_used', 1);
+        $response->assertJsonPath('attempt.base_max_attempts', 2);
+        $response->assertJsonPath('attempt.extra_attempts_granted', 1);
+        $response->assertJsonPath('attempt.attempts_allowed', 3);
+    }
+
+    public function test_teacher_can_view_assessment_item_analysis_for_student_without_attempts_yet(): void
+    {
+        $teacher = $this->createUser([
+            'role' => 'teacher',
+            'program' => 'teacher',
+        ]);
+
+        $student = $this->createUser([
+            'role' => 'student',
+            'program' => 'educ',
+        ]);
+
+        $class = ClassModel::query()->create([
+            'name' => 'Assessment Class 2',
+            'code' => 'CLS301',
+            'school_year' => now()->year,
+            'description' => 'Class for pending assessment limits',
+            'created_by' => $teacher->id,
+        ]);
+
+        $class->students()->attach($student->id);
+
+        $module = Module::query()->create([
+            'class_id' => $class->id,
+            'title' => 'Formal Exam Unattempted',
+            'description' => 'Exam description',
+            'is_formal_assessment' => true,
+            'is_active' => true,
+            'max_attempts' => 1,
+        ]);
+
+        $response = $this->actingAs($teacher)
+            ->getJson(route('student.performance.student-item-analysis', [
+                'class' => $class->id,
+                'student' => $student->id,
+                'type' => 'assessment',
+                'module_id' => $module->id,
+            ]));
+
+        $response->assertOk();
+        $response->assertJsonPath('attempt.is_formal_assessment', true);
+        $response->assertJsonPath('attempt.attempts_used', 0);
+        $response->assertJsonPath('attempt.base_max_attempts', 1);
+        $response->assertJsonPath('attempt.extra_attempts_granted', 0);
+        $response->assertJsonPath('attempt.attempts_allowed', 1);
+    }
+
     private function createUser(array $overrides = []): User
     {
         static $counter = 2000;
