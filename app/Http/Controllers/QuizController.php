@@ -109,6 +109,17 @@ class QuizController extends Controller
         $clean = preg_replace('/\bThe student\b/i', 'You', $clean);
         $clean = preg_replace('/\bThe learner\b/i', 'You', $clean);
 
+        // Fix grammar artifacts from replacements (e.g. "You has grasped" -> "You have grasped")
+        $clean = preg_replace('/\bYou has\b/i', 'You have', $clean);
+        $clean = preg_replace('/\bYou was\b/i', 'You were', $clean);
+        $clean = preg_replace('/\bthey have shown\b/i', 'you have shown', $clean);
+        $clean = preg_replace('/\bthey have\b/i', 'you have', $clean);
+        $clean = preg_replace('/\bthey showed\b/i', 'you showed', $clean);
+        $clean = preg_replace('/\btheir understanding\b/i', 'your understanding', $clean);
+        $clean = preg_replace('/\btheir\b/i', 'your', $clean);
+        $clean = preg_replace('/\bthem\b/i', 'you', $clean);
+        $clean = preg_replace('/\bthemselves\b/i', 'yourself', $clean);
+
         // 4. Remove "Item \d+:\s*" or "Question \d+:\s*" prefixes at bullet beginnings
         $clean = preg_replace('/(?<=(?:^|\n)[-*\d\.\s]{0,10})\b(?:Item|Question)\s*\d+\s*:\s*/i', '', $clean);
 
@@ -309,12 +320,15 @@ class QuizController extends Controller
         $weakBulletCount = substr_count((string) $attempt->ai_weak, "\n- ") + (str_starts_with(trim((string) $attempt->ai_weak), '- ') ? 1 : 0);
         $hasExcessiveBullets = $weakBulletCount > 3;
 
+        $hasReversedFactOrGrammarQuirk = preg_match('/\b(?:You has|You was|disorders are expected in their cultural context|cultural norms are universal and absolute)\b/i', (string) $attempt->ai_strong.' '.(string) $attempt->ai_weak.' '.(string) $attempt->ai_recommendation);
+
         $hasLegacyHallucinations = $attempt->ai_strong !== null && (
             preg_match('/\((?:APA|DSM|Barlow|Wampold|Triandis|Kessler|Hart|Hooley|[A-Za-z\s&.,]+,\s*(?:19|20)\d{2})/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || preg_match('/\bp\.\s*\d+/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || preg_match('/\bThe student (?:demonstrated|incorrectly|showed|selected|stated)\b/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || preg_match('/(?:^|\n)[-*\s]*Item\s*\d+\s*:/i', $attempt->ai_strong.' '.$attempt->ai_weak)
             || $hasExcessiveBullets
+            || $hasReversedFactOrGrammarQuirk
         );
 
         if ($attempt->ai_strong !== null && ! $hasLegacyHallucinations) {
@@ -345,9 +359,9 @@ class QuizController extends Controller
                 $correctText = $options[$a->question->correct_option] ?? "Option {$a->question->correct_option}";
 
                 if ($a->is_correct) {
-                    $correctItems[] = "• Question Concept: \"{$qText}\"\n  Mastered Principle: \"{$correctText}\"";
+                    $correctItems[] = "• Question: \"{$qText}\"\n  You correctly selected: \"{$correctText}\"";
                 } else {
-                    $incorrectItems[] = "• Question Concept: \"{$qText}\"\n  Student's Mistaken Selection: \"{$selectedText}\"\n  Actual True Lecture Rule: \"{$correctText}\"";
+                    $incorrectItems[] = "• Question: \"{$qText}\"\n  You selected: \"{$selectedText}\"\n  Correct answer choice: \"{$correctText}\"";
                 }
             }
 
