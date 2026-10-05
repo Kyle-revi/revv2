@@ -295,11 +295,24 @@ class MockBoardReadinessService
 
         $regressedItems = [];
         $repeatedlyMissed = [];
+        $missedPostItems = [];
 
         foreach ($postAnswers as $postAns) {
             $question = $postAns->question;
             if (! $question) {
                 continue;
+            }
+
+            if (! $postAns->is_correct) {
+                $itemData = [
+                    'question_id' => $question->id,
+                    'stem' => Str::limit(trim($question->question_text ?? ''), 90),
+                    'domain' => ! empty($question->domain) ? trim($question->domain) : 'General',
+                    'explanation' => ! empty($question->explanation) ? Str::limit(trim($question->explanation), 120) : null,
+                ];
+                if (count($missedPostItems) < 6) {
+                    $missedPostItems[] = $itemData;
+                }
             }
 
             $preAns = $preByQuestionId->get($question->id)
@@ -330,6 +343,7 @@ class MockBoardReadinessService
         return [
             'regressed_items' => $regressedItems,
             'repeatedly_missed_items' => $repeatedlyMissed,
+            'missed_post_items' => $missedPostItems,
             'regressed_count' => count($regressedItems),
             'repeatedly_missed_count' => count($repeatedlyMissed),
         ];
@@ -445,8 +459,10 @@ class MockBoardReadinessService
 
             $missedStems = array_merge(
                 collect($reportData['item_insights']['repeatedly_missed_items'] ?? [])->pluck('stem')->toArray(),
-                collect($reportData['item_insights']['regressed_items'] ?? [])->pluck('stem')->toArray()
+                collect($reportData['item_insights']['regressed_items'] ?? [])->pluck('stem')->toArray(),
+                collect($reportData['item_insights']['missed_post_items'] ?? [])->pluck('stem')->toArray()
             );
+            $missedStems = array_values(array_unique($missedStems));
 
             // If the student has a perfect score or no weak domains and no missed items, use the dedicated mastery fallback plan directly
             if ($isPerfectScore || (empty($weakestDomains) && empty($missedStems))) {
@@ -616,6 +632,12 @@ class MockBoardReadinessService
         foreach ($reportData['item_insights']['regressed_items'] ?? [] as $item) {
             $missedTopics[] = "{$item['domain']}: {$item['stem']}";
         }
+        if (empty($missedTopics)) {
+            foreach ($reportData['item_insights']['missed_post_items'] ?? [] as $item) {
+                $missedTopics[] = "{$item['domain']}: {$item['stem']}";
+            }
+        }
+        $missedTopics = array_values(array_unique($missedTopics));
         $missedTopics = array_slice($missedTopics, 0, 4);
 
         $studySteps = [];
