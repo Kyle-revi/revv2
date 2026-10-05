@@ -22,11 +22,12 @@ class AiSettingsResolver
         'feature.class_summary_enabled' => true,
         'feature.assessment_analysis_enabled' => true,
         'model.default' => '@cf/meta/llama-3.2-3b-instruct',
+        'model.quiz_insights' => '@cf/meta/llama-3.1-8b-instruct',
         'model.max_tokens' => 600,
         'prompt.quiz_generation.system' => 'You are an expert academic examiner and board examination test developer. Output ONLY a JSON array of exactly {num_questions} question objects. Questions must be strictly lecture-based, concept-focused, and non-duplicative. Never test or copy illustrative examples or specific numbers from worked examples. No markdown, no backticks, no explanation. Start with [ and end with ].',
         'prompt.quiz_generation.user_template' => "Generate EXACTLY {num_questions} high-quality, lecture-based multiple-choice questions. NOT more. NOT less. EXACTLY {num_questions}.\nDifficulty: {difficulty}.\nModule: {module_title}\nDescription: {module_description}\n\nContent:\n{combined_text}\n\nStrict Rules:\n- Return ONLY a valid JSON array.\n- The array must have EXACTLY {num_questions} objects.\n- Each object: {\"question\":\"...\",\"options\":{\"A\":\"...\",\"B\":\"...\",\"C\":\"...\",\"D\":\"...\"},\"correct\":\"A|B|C|D\"}\n- STRICTLY LECTURE-BASED: Base questions solely on core principles, definitions, classifications, standards, and rules taught in the lecture.\n- NO WORKED EXAMPLES: Do NOT use, copy, or convert worked examples, case-study scenarios, numerical illustrations, or specific company/person names from the text into questions.\n- NO PRE-EXISTING QUESTIONS: If the text contains practice drills, sample quizzes, exercises, or answer keys, IGNORE them and test the underlying concepts instead.\n- No markdown, no backticks, no extra text.\n- Start with [ and end with ]\n- Stop after {num_questions} questions.",
-        'prompt.quiz_insights.system' => 'You are an expert academic mentor and board examination reviewer. Provide concept-level diagnostic feedback on the student\'s quiz attempt. Group findings into underlying subject topics rather than reciting question numbers or option letters. Never write "The student identified Option A" or "The student incorrectly identified". Be concise, analytical, and professional.',
-        'prompt.quiz_insights.user_template' => "Student scored {score}% on '{module_title}'.\n\nStudent Assessment Breakdown:\n{answers_context}\n\nAnalyze conceptual mastery and reply in this exact format with clear headings:\n\nStrong Areas:\n- **[Concept/Topic Name]:** [1 concise sentence on the principle or rule mastered]\n- **[Second Concept]:** [1 concise sentence on demonstrated strength]\n\nWeak Areas:\n- **[Missed Topic/Rule]:** [1 concise sentence diagnosing the misconception or distinction missed without citing option letters]\n- **[Second Missed Topic]:** [1 concise sentence on the specific principle needing review]\n\nRecommendation:\n1. [Specific topic or standard to re-read in lecture notes]\n2. [Targeted distinction or formula to clarify to prevent repeating the mistake]\n3. [Actionable practice step before retaking]",
+        'prompt.quiz_insights.system' => "You are an expert academic mentor and board examination reviewer providing personalized diagnostic feedback directly to a college student after their quiz.\n\nSTRICT RULES:\n1. SECOND PERSON ONLY: Always address the student directly as \"You\" / \"Your\" (e.g., \"You demonstrated mastery of...\", \"You need to review...\"). NEVER refer to the student in the third person (STRICTLY FORBIDDEN: \"The student\", \"The learner\", \"The examinee\").\n2. ABSOLUTELY ZERO CITATIONS: NEVER include academic citations, author names, publication years, page numbers, DSM citations, or outside literature references (STRICTLY FORBIDDEN: \"(APA, 2020)\", \"(p. 145)\", \"(Barlow, 2018)\", \"(Wampold, 2001)\", or any author/year parentheses). Reference only lecture concepts, rules, classifications, and definitions taught in the module.\n3. NO ITEM-BY-ITEM RECITATION: Do NOT list question numbers or item numbers (STRICTLY FORBIDDEN: \"Item 1:\", \"Question 2:\"). Synthesize your findings into 2 to 3 conceptual topic themes.\n4. ACCURACY AND CLARITY: Clearly explain the true lecture principle so the student understands WHY their chosen answer was incorrect. Never confuse the correct rule with the misconception.\n5. FOCUSED ACTION PLAN: Give 2 to 3 concrete study steps targeting ONLY the concepts the student missed. Never advise them to re-study concepts they already got right.",
+        'prompt.quiz_insights.user_template' => "You scored {score}% on '{module_title}'.\n\nQuiz Performance Context:\n{answers_context}\n\nAnalyze conceptual mastery and reply in this exact structured format with clear headings:\n\nStrong Areas:\n- **[Concept/Topic Name]:** [1 concise sentence directly explaining what you demonstrated mastery of based on the lecture rules]\n- **[Second Concept]:** [1 concise sentence highlighting your demonstrated strength]\n\nWeak Areas:\n- **[Missed Topic/Rule]:** [1 concise sentence explaining the true lecture rule and clarifying the misconception]\n- **[Second Missed Topic]:** [1 concise sentence on the specific distinction to review]\n\nRecommendation:\n1. [Specific lecture concept or classification to re-read in your notes]\n2. [Targeted distinction or comparison to clarify before retaking]\n3. [Actionable practice step to verify retention]",
         'prompt.class_summary.system' => 'You are an educational performance analyst. Reply in this exact format with line breaks between each section:\n\nClass Average: [value]\nPass/Fail Status: [value]\nWeak Areas:\n- [area 1]\n- [area 2]\nRecommendation: [one sentence]',
         'prompt.class_summary.user_template' => 'Class average: {class_average}%. Pass count: {pass_count}, Fail count: {fail_count}. Weak areas: {weak_summary}.',
     ];
@@ -59,6 +60,11 @@ class AiSettingsResolver
         return (string) $this->getGlobal('model.default', '@cf/meta/llama-3.2-3b-instruct');
     }
 
+    public function getInsightModel(): string
+    {
+        return (string) $this->getGlobal('model.quiz_insights', '@cf/meta/llama-3.1-8b-instruct');
+    }
+
     public function getMaxTokens(): int
     {
         return (int) $this->getGlobal('model.max_tokens', 400);
@@ -82,6 +88,7 @@ class AiSettingsResolver
             'feature.class_summary_enabled',
             'feature.assessment_analysis_enabled',
             'model.default',
+            'model.quiz_insights',
             'model.max_tokens',
             'prompt.quiz_generation.system',
             'prompt.quiz_generation.user_template',

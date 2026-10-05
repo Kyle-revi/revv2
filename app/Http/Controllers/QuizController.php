@@ -92,6 +92,34 @@ class QuizController extends Controller
         return ['strong' => $strong, 'weak' => $weak, 'recommendation' => $recommendation];
     }
 
+    private function sanitizeInsightText(string $text): string
+    {
+        // 1. Remove parenthetical citations: (APA, 2020), (APA, 2020, p. 123), (Wampold, 2001, p. 12), (Triandis, 1995), (p. 145), etc.
+        $clean = preg_replace('/\s*\((?:[A-Za-z\s&.,]+,\s*(?:19|20)\d{2}(?:,\s*p{1,2}\.?\s*\d+)?|(?:p|pp)\.?\s*\d+)\)/i', '', $text);
+
+        // 2. Remove isolated citations without parenthesis if any (e.g. "APA, 2020, p. 123")
+        $clean = preg_replace('/\b(?:APA|DSM(?:-5)?(?:-TR)?|Barlow|Hooley|Wampold|Triandis|Kessler|Hart)\s*,\s*(?:19|20)\d{2}(?:,\s*p{1,2}\.?\s*\d+)?\b/i', '', $clean);
+
+        // 3. Convert 3rd-person voice to 2nd-person ("The student..." -> "You...")
+        $clean = preg_replace('/\bThe student demonstrated\b/i', 'You demonstrated', $clean);
+        $clean = preg_replace('/\bThe student showed\b/i', 'You showed', $clean);
+        $clean = preg_replace('/\bThe student correctly\b/i', 'You correctly', $clean);
+        $clean = preg_replace('/\bThe student incorrectly\b/i', 'You incorrectly', $clean);
+        $clean = preg_replace('/\bThe student\'s\b/i', 'Your', $clean);
+        $clean = preg_replace('/\bThe student\b/i', 'You', $clean);
+        $clean = preg_replace('/\bThe learner\b/i', 'You', $clean);
+
+        // 4. Remove "Item \d+:\s*" or "Question \d+:\s*" prefixes at bullet beginnings
+        $clean = preg_replace('/(?<=(?:^|\n)[-*\d\.\s]{0,10})\b(?:Item|Question)\s*\d+\s*:\s*/i', '', $clean);
+
+        // 5. Clean up duplicate spaces or punctuation artifacts like "( )" or " ."
+        $clean = preg_replace('/\(\s*\)/', '', $clean);
+        $clean = preg_replace('/\s+\./', '.', $clean);
+        $clean = preg_replace('/[ \t]+/', ' ', $clean);
+
+        return trim($clean);
+    }
+
     private function parseAiInsightsResponse(string $rawResponse): array
     {
         $raw = trim($rawResponse);
@@ -107,9 +135,9 @@ class QuizController extends Controller
                 $r = $json['recommendation'] ?? $json['recommendations'] ?? $json['Recommendation'] ?? null;
                 if ($s || $w || $r) {
                     return [
-                        'strong' => is_array($s) ? implode("\n", $s) : (string) ($s ?? ''),
-                        'weak' => is_array($w) ? implode("\n", $w) : (string) ($w ?? ''),
-                        'recommendation' => is_array($r) ? implode("\n", $r) : (string) ($r ?? ''),
+                        'strong' => $this->sanitizeInsightText(is_array($s) ? implode("\n", $s) : (string) ($s ?? '')),
+                        'weak' => $this->sanitizeInsightText(is_array($w) ? implode("\n", $w) : (string) ($w ?? '')),
+                        'recommendation' => $this->sanitizeInsightText(is_array($r) ? implode("\n", $r) : (string) ($r ?? '')),
                     ];
                 }
             }
@@ -136,9 +164,9 @@ class QuizController extends Controller
         }
 
         return [
-            'strong' => ! empty($strong) ? trim($strong) : null,
-            'weak' => ! empty($weak) ? trim($weak) : null,
-            'recommendation' => ! empty($recommendation) ? trim($recommendation) : null,
+            'strong' => ! empty($strong) ? $this->sanitizeInsightText($strong) : null,
+            'weak' => ! empty($weak) ? $this->sanitizeInsightText($weak) : null,
+            'recommendation' => ! empty($recommendation) ? $this->sanitizeInsightText($recommendation) : null,
         ];
     }
 
@@ -244,7 +272,14 @@ class QuizController extends Controller
             ]);
         }
 
-        if ($attempt->ai_strong !== null) {
+        $hasLegacyHallucinations = $attempt->ai_strong !== null && (
+            preg_match('/\((?:APA|DSM|Barlow|Wampold|Triandis|Kessler|Hart|Hooley|[A-Za-z\s&.,]+,\s*(?:19|20)\d{2})/i', $attempt->ai_strong.' '.$attempt->ai_weak)
+            || preg_match('/\bp\.\s*\d+/i', $attempt->ai_strong.' '.$attempt->ai_weak)
+            || preg_match('/\bThe student (?:demonstrated|incorrectly|showed|selected|stated)\b/i', $attempt->ai_strong.' '.$attempt->ai_weak)
+            || preg_match('/(?:^|\n)[-*\s]*Item\s*\d+\s*:/i', $attempt->ai_strong.' '.$attempt->ai_weak)
+        );
+
+        if ($attempt->ai_strong !== null && ! $hasLegacyHallucinations) {
             return response()->json([
                 'success' => true,
                 'strong' => $attempt->ai_strong,
@@ -259,18 +294,31 @@ class QuizController extends Controller
         try {
             $resolver = app(AiSettingsResolver::class);
             $ai = app(CloudflareAI::class);
-            $answersContext = '';
+            $correctItems = [];
+            $incorrectItems = [];
+
             foreach ($answers as $idx => $a) {
-                $status = $a->is_correct ? 'Correct' : 'Incorrect';
                 $qText = trim($a->question->question_text ?? '');
+                if ($qText === '') {
+                    continue;
+                }
                 $options = is_array($a->question->options) ? $a->question->options : (json_decode($a->question->options ?? '[]', true) ?: []);
                 $selectedText = $options[$a->selected_option] ?? "Option {$a->selected_option}";
                 $correctText = $options[$a->question->correct_option] ?? "Option {$a->question->correct_option}";
 
-                $answersContext .= '- Item '.($idx + 1)." ({$status}): {$qText}\n";
-                if (! $a->is_correct) {
-                    $answersContext .= "  Selected Choice: \"{$selectedText}\" | Correct Principle: \"{$correctText}\"\n";
+                if ($a->is_correct) {
+                    $correctItems[] = "• Question Concept: \"{$qText}\"\n  Mastered Principle: \"{$correctText}\"";
+                } else {
+                    $incorrectItems[] = "• Question Concept: \"{$qText}\"\n  Student's Mistaken Selection: \"{$selectedText}\"\n  Actual True Lecture Rule: \"{$correctText}\"";
                 }
+            }
+
+            $answersContext = '';
+            if (! empty($correctItems)) {
+                $answersContext .= "CONCEPTS DEMONSTRATED CORRECTLY:\n".implode("\n", $correctItems)."\n\n";
+            }
+            if (! empty($incorrectItems)) {
+                $answersContext .= "CONCEPTS MISSED (STUDENT NEEDS CLARIFICATION):\n".implode("\n", $incorrectItems);
             }
 
             $userPrompt = $resolver->renderTemplate($resolver->getPromptTemplate('quiz_insights', 'user_template'), [
@@ -279,14 +327,26 @@ class QuizController extends Controller
                 'answers_context' => trim($answersContext),
             ]);
 
-            $result = $ai->run($resolver->getModel(), [
-                'messages' => [
-                    ['role' => 'system', 'content' => $resolver->getPromptTemplate('quiz_insights', 'system')],
-                    ['role' => 'user', 'content' => $userPrompt],
-                ],
-                'max_tokens' => max(1200, $resolver->getMaxTokens()),
-                'temperature' => 0.4,
-            ]);
+            $insightModel = $resolver->getInsightModel();
+            try {
+                $result = $ai->run($insightModel, [
+                    'messages' => [
+                        ['role' => 'system', 'content' => $resolver->getPromptTemplate('quiz_insights', 'system')],
+                        ['role' => 'user', 'content' => $userPrompt],
+                    ],
+                    'max_tokens' => max(1200, $resolver->getMaxTokens()),
+                    'temperature' => 0.3,
+                ]);
+            } catch (\Exception $e) {
+                $result = $ai->run($resolver->getModel(), [
+                    'messages' => [
+                        ['role' => 'system', 'content' => $resolver->getPromptTemplate('quiz_insights', 'system')],
+                        ['role' => 'user', 'content' => $userPrompt],
+                    ],
+                    'max_tokens' => max(1200, $resolver->getMaxTokens()),
+                    'temperature' => 0.3,
+                ]);
+            }
 
             $rawResponse = is_string($result['response'] ?? null)
                 ? $result['response']
