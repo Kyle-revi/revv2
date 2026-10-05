@@ -741,13 +741,9 @@ class MockBoardStatisticsService
             $currentScore = $preBoardsScore !== null ? $preBoardsScore : $preTestScore;
             $likelihood = 'not_started';
             if ($currentScore !== null) {
-                if ($currentScore >= 75) {
-                    $likelihood = 'high';
-                } elseif ($currentScore >= 65) {
-                    $likelihood = 'moderate';
-                } else {
-                    $likelihood = 'low';
-                }
+                $threshold = $mockBoard->passing_percentage ?? 75;
+                $tierData = self::calculateReadinessTier((float) $currentScore, $threshold);
+                $likelihood = $tierData['tier'];
             }
 
             $completedAt = $preBoards?->created_at?->format('M d, Y')
@@ -1115,5 +1111,53 @@ class MockBoardStatisticsService
             ],
             'by_program' => $byProgram,
         ];
+    }
+
+    /**
+     * Calculate readiness tier and details for a given score and passing threshold.
+     * Centralized logic used across student results, readiness report, and teacher analytics.
+     *
+     * @return array{tier: string, label: string, icon: string, color: string, badge_class: string, description: string, gap: float}
+     */
+    public static function calculateReadinessTier(float $score, int $passingPercentage = 75): array
+    {
+        $threshold = $passingPercentage;
+        $moderateThreshold = max($threshold - 10, 50);
+
+        if ($score >= $threshold) {
+            return [
+                'tier' => 'high',
+                'label' => 'High Chance (Board Ready)',
+                'icon' => 'fa-check-circle',
+                'color' => 'positive',
+                'badge_class' => 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                'description' => 'Your score of '.(int) round($score)."% meets the standard {$threshold}% PRC passing threshold. You demonstrate a strong likelihood of passing the Board Exam.",
+                'gap' => 0.0,
+            ];
+        } elseif ($score >= $moderateThreshold) {
+            $gap = round($threshold - $score, 1);
+
+            return [
+                'tier' => 'moderate',
+                'label' => 'Moderate Chance (Almost Ready)',
+                'icon' => 'fa-exclamation-circle',
+                'color' => 'neutral',
+                'badge_class' => 'bg-amber-100 text-amber-800 border-amber-300',
+                'description' => 'Your score of '.(int) round($score)."% is {$gap}% shy of the {$threshold}% threshold. Focused reinforcement in weak domains will help secure a passing mark.",
+                'gap' => $gap,
+            ];
+        } else {
+            $gap = round($threshold - $score, 1);
+
+            return [
+                'tier' => 'low',
+                'label' => 'Low Chance (At-Risk)',
+                'icon' => 'fa-times-circle',
+                'color' => 'negative',
+                'badge_class' => 'bg-rose-100 text-rose-800 border-rose-300',
+                'description' => 'Your score of '.(int) round($score)."% is {$gap}% below the {$threshold}% threshold (At-Risk zone). Intensive review and remediation are advised.",
+                'gap' => $gap,
+            ];
+        }
     }
 }

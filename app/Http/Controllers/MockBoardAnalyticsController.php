@@ -64,6 +64,7 @@ class MockBoardAnalyticsController extends Controller
             'users.name as student_name',
             'users.program as student_program',
             'mock_boards.program as board_program',
+            'mock_boards.passing_percentage as board_passing_percentage',
             'mock_board_attempts.phase_type',
             'mock_board_attempts.percentage',
             'mock_board_attempts.passed'
@@ -93,13 +94,9 @@ class MockBoardAnalyticsController extends Controller
 
             $likelihood = 'not_started';
             if ($currentScore !== null) {
-                if ($currentScore >= 75) {
-                    $likelihood = 'high';
-                } elseif ($currentScore >= 65) {
-                    $likelihood = 'moderate';
-                } else {
-                    $likelihood = 'low';
-                }
+                $threshold = (int) ($first->board_passing_percentage ?? 75);
+                $tierData = MockBoardStatisticsService::calculateReadinessTier((float) $currentScore, $threshold);
+                $likelihood = $tierData['tier'];
             }
 
             return [

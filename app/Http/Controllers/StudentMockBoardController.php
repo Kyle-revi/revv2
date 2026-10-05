@@ -8,10 +8,12 @@ use App\Models\MockBoardPhase;
 use App\Models\Module;
 use App\Models\QuizAttempt;
 use App\Models\QuizAttemptSnapshot;
+use App\Services\MockBoardReadinessService;
 use App\Services\MockBoardStatisticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class StudentMockBoardController extends Controller
 {
@@ -35,7 +37,8 @@ class StudentMockBoardController extends Controller
     ];
 
     public function __construct(
-        private MockBoardStatisticsService $statisticsService
+        private MockBoardStatisticsService $statisticsService,
+        private MockBoardReadinessService $readinessService
     ) {}
 
     /**
@@ -660,10 +663,13 @@ class StudentMockBoardController extends Controller
         }
 
         $subjectPerformance = [];
+        $weakDetails = [];
 
         foreach ($attempt->quizAttempt->answers as $answer) {
             $question = $answer->question;
-            $subject = $question->category ?? $question->subject ?? 'General Assessment';
+            $subject = ! empty($question?->domain)
+                ? trim($question->domain)
+                : (! empty($mockBoardPhase->title) ? trim($mockBoardPhase->title) : 'Core Assessment');
 
             if (! isset($subjectPerformance[$subject])) {
                 $subjectPerformance[$subject] = ['correct' => 0, 'total' => 0];
@@ -672,6 +678,13 @@ class StudentMockBoardController extends Controller
             $subjectPerformance[$subject]['total']++;
             if ($answer->is_correct) {
                 $subjectPerformance[$subject]['correct']++;
+            } else {
+                if (! isset($weakDetails[$subject])) {
+                    $weakDetails[$subject] = [];
+                }
+                if ($question && count($weakDetails[$subject]) < 3) {
+                    $weakDetails[$subject][] = Str::limit(trim($question->question_text), 75);
+                }
             }
         }
 
@@ -689,16 +702,34 @@ class StudentMockBoardController extends Controller
         }
 
         if (empty($subjectPerformance)) {
-            $recommendation = "No answers were recorded for this attempt, so we can't generate insights. Make sure to select an answer for each question before submitting.";
+            $recommendation = 'No answers were recorded for this attempt. Ensure all questions are answered before submitting.';
         } elseif (empty($weakAreas)) {
-            $recommendation = 'Excellent performance across all tested categories! Keep up the great work to maintain your edge for the board exams.';
+            $recommendation = "1. Maintain peak performance across all board examination domains with regular spaced-repetition drills.\n2. Proceed to the next mock board phase with high confidence.";
         } else {
-            $recommendation = 'Action Required: Prioritize reviewing your low-scoring concepts, specifically targeting '.implode(', ', array_map(fn ($val) => explode(' (', $val)[0], $weakAreas)).'.';
+            $weakDomainNames = array_map(fn ($val) => explode(' (', $val)[0], $weakAreas);
+            $targetedSteps = [];
+            $targetedSteps[] = '1. Priority Review: Focus your study sessions immediately on your lowest-scoring domains: '.implode(', ', $weakDomainNames).'.';
+
+            $missedSamples = [];
+            foreach ($weakDetails as $dom => $questions) {
+                if (! empty($questions)) {
+                    $missedSamples[] = "In {$dom}: ".implode('; ', array_slice($questions, 0, 2));
+                }
+            }
+
+            if (! empty($missedSamples)) {
+                $targetedSteps[] = '2. Specific Concepts to Revisit: '.implode(' | ', array_slice($missedSamples, 0, 2)).'.';
+            } else {
+                $targetedSteps[] = '2. Focus on analyzing standard provisions, definitions, and application problems in the weak domains.';
+            }
+
+            $targetedSteps[] = '3. Retake targeted domain drills and review practice explanations before your next post-test attempt.';
+            $recommendation = implode("\n", $targetedSteps);
         }
 
         $attempt->update([
-            'ai_strong' => empty($strongAreas) ? 'None identified yet' : implode(', ', $strongAreas),
-            'ai_weak' => empty($weakAreas) ? 'None identified yet' : implode(', ', $weakAreas),
+            'ai_strong' => empty($strongAreas) ? 'None identified yet' : implode("\n", $strongAreas),
+            'ai_weak' => empty($weakAreas) ? 'None identified yet' : implode("\n", $weakAreas),
             'ai_recommendation' => $recommendation,
         ]);
 
@@ -872,5 +903,52 @@ class StudentMockBoardController extends Controller
             'historyByPhaseId' => $historyByPhaseId,
             'overallPostTest' => $overallPostTest,
         ]);
+    }
+
+    /**
+     * Display the full Mock Board Student Readiness Report
+     * (accessible only when the student has completed both Pre-Test and Post-Test).
+     */
+    public function readiness(MockBoard $mockBoard)
+    {
+        $user = auth()->user();
+
+        if (! $this->programsMatch($mockBoard, $user)) {
+            abort(403, 'This Mock Board is not assigned to your program.');
+        }
+
+        if (! $this->readinessService->canAccessReadiness($mockBoard, $user)) {
+            return redirect()
+                ->route('student.mock-boards.results', $mockBoard)
+                ->with('error', 'You must complete both the Pre-Test and at least one Post-Test phase to view your Readiness Report.');
+        }
+
+        $report = $this->readinessService->getOrGenerateReport($mockBoard, $user);
+
+        return view('pages.student.mock-boards.readiness', [
+            'mockBoard' => $mockBoard,
+            'report' => $report,
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * Download the student readiness report formatted as an Excel-compatible CSV.
+     */
+    public function exportReadinessExcel(MockBoard $mockBoard)
+    {
+        $user = auth()->user();
+
+        if (! $this->programsMatch($mockBoard, $user)) {
+            abort(403, 'This Mock Board is not assigned to your program.');
+        }
+
+        if (! $this->readinessService->canAccessReadiness($mockBoard, $user)) {
+            abort(403, 'Readiness report is only accessible after completing both Pre-Test and Post-Test.');
+        }
+
+        $report = $this->readinessService->getOrGenerateReport($mockBoard, $user);
+
+        return $this->readinessService->generateExcelExport($report, $mockBoard, $user);
     }
 }

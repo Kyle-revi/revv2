@@ -2368,16 +2368,24 @@ POWERSHELL;
                         ."- Include a short evidence field with a verbatim or near-verbatim 5-15 word phrase from the text.\n",
                 };
 
+                $lectureDirectives = "LECTURE-BASED & ANTI-EXAMPLE DIRECTIVES:\n"
+                    ."- STRICTLY LECTURE-BASED: Test ONLY the general theoretical rules, criteria, standards, definitions, and procedures taught in the lecture.\n"
+                    ."- COMPLETELY IGNORE ILLUSTRATIONS/EXAMPLES: If the text contains any section, paragraph, or sentence labeled 'Illustration', 'Example', 'Case', or has specific peso amounts or entity names, COMPLETELY IGNORE IT as if it does not exist in the document.\n"
+                    ."- FORBIDDEN IN STEM AND CHOICES: Do NOT create questions asking 'Which of the following is an example...'. Do NOT copy or include ANY numbers, peso amounts, or specific company/person names from worked examples in EITHER question stems OR answer choices.\n"
+                    ."- RULE-BASED QUESTIONS ONLY: Ask directly about the underlying rule, principle, definition, or criteria.\n"
+                    ."- NO PRE-EXISTING QUESTIONS: If the text contains practice problems, quizzes, drills, exercises, or answer keys, IGNORE them completely and formulate questions testing the underlying lecture concepts instead.\n";
+
                 $prompt = "Generate EXACTLY {$bufferedCount} unique multiple-choice questions based ONLY on the text below.\n"
                     ."Each question must have EXACTLY {$choiceCount} answer choices ({$letterList}).\n"
                     ."Difficulty: {$targetDifficulty}.\n"
                     ."Source file: {$task['file_name']}\n\n"
                     ."════════════════════════════════════════\n"
+                    .$lectureDirectives
                     .$angleDirective
                     .$typeInstructions
                     ."════════════════════════════════════════\n\n"
                     ."Requirements:\n"
-                    ."- Formulate questions specifically testing concepts, rules, facts, or scenarios found in the content below.\n"
+                    ."- Formulate questions specifically testing concepts, rules, facts, or standards found in the content below.\n"
                     ."- Return ONLY a valid JSON array of {$bufferedCount} objects.\n"
                     ."- Format: {\"question\":\"...\",\"options\":{$optionsExample},\"correct\":\"{$letterList}\",\"difficulty\":\"{$targetDifficulty}\",\"question_type\":\"{$questionType}\",\"evidence\":\"...\"}\n"
                     ."- Spread correct answers across {$letterList}.\n"
@@ -2392,7 +2400,7 @@ POWERSHELL;
                         'messages' => [
                             [
                                 'role' => 'system',
-                                'content' => "You generate board-exam MCQs. Output ONLY a JSON array of {$bufferedCount} objects. Every question must be distinct and non-duplicative. No markdown.",
+                                'content' => "You generate board-exam MCQs. Output ONLY a JSON array of {$bufferedCount} objects. Every question must be lecture-based, testing concepts without copying worked examples. Distinct and non-duplicative. No markdown.",
                             ],
                             [
                                 'role' => 'user',
@@ -2584,7 +2592,10 @@ POWERSHELL;
                     ."Source file: {$topUpFileName}\n\n"
                     .$avoidBlock
                     ."Requirements:\n"
-                    ."- Generate unique questions testing distinct concepts from the provided text.\n"
+                    ."- STRICTLY LECTURE-BASED: Test distinct theoretical concepts, standards, rules, or definitions from the text.\n"
+                    ."- COMPLETELY IGNORE ILLUSTRATIONS/EXAMPLES: If the text contains sections with worked illustrations, examples, or specific figures, completely ignore them.\n"
+                    ."- FORBIDDEN IN STEM AND CHOICES: Do NOT create questions asking 'Which of the following is an example...'. Do NOT use worked example numbers or company names in stems or answer choices.\n"
+                    ."- NO PRE-EXISTING QUESTIONS: If the text includes existing sample drills or questions, ignore them and formulate fresh concept questions.\n"
                     ."- Format: Return ONLY a valid JSON array of {$bufferedTopUp} objects.\n"
                     ."- Format: [{\"question\":\"...\",\"options\":{$optionsExample},\"correct\":\"{$letterList}\",\"difficulty\":\"Easy|Average|Difficult\",\"question_type\":\"what|why|how\",\"evidence\":\"...\"}]\n"
                     ."- Spread correct answers across {$letterList}.\n"
@@ -2596,7 +2607,7 @@ POWERSHELL;
                         'messages' => [
                             [
                                 'role' => 'system',
-                                'content' => "You generate board-exam MCQs. Output ONLY a JSON array of {$bufferedTopUp} distinct objects. No markdown.",
+                                'content' => "You generate board-exam MCQs. Output ONLY a JSON array of {$bufferedTopUp} distinct objects. Lecture-based concepts only, no worked examples. No markdown.",
                             ],
                             [
                                 'role' => 'user',

@@ -51,31 +51,95 @@ class QuizController extends Controller
         $correctAnswers = $answers->where('is_correct', true)->values();
         $wrongAnswers = $answers->where('is_correct', false)->values();
 
-        $strong = 'You answered '.$attempt->score.' out of '.$attempt->total.' questions correctly.';
+        $strong = 'Score: '.$attempt->score.'/'.$attempt->total.' ('.round($attempt->percentage).'%).';
         if ($correctAnswers->isNotEmpty()) {
-            $correctTopics = $correctAnswers->take(2)
+            $correctTopics = $correctAnswers->take(3)
                 ->map(fn ($answer) => trim((string) data_get($answer, 'question.question_text', '')))
-                ->filter()->map(fn ($text) => Str::limit($text, 80))->implode(' | ');
-            if ($correctTopics !== '') {
-                $strong .= ' Strong items: '.$correctTopics.'.';
+                ->filter()->map(fn ($text) => Str::limit($text, 90))->values();
+            if ($correctTopics->isNotEmpty()) {
+                $strong .= "\nDemonstrated solid understanding of:\n- ".$correctTopics->implode("\n- ");
+            }
+        } else {
+            $strong = 'No questions answered correctly on this attempt. Focus on foundational lecture concepts.';
+        }
+
+        $weak = 'No major weak areas detected; high accuracy achieved.';
+        if ($wrongAnswers->isNotEmpty()) {
+            $wrongTopics = $wrongAnswers->take(3)
+                ->map(fn ($answer) => trim((string) data_get($answer, 'question.question_text', '')))
+                ->filter()->map(fn ($text) => Str::limit($text, 90))->values();
+            if ($wrongTopics->isNotEmpty()) {
+                $weak = "Needs review on the following tested concepts:\n- ".$wrongTopics->implode("\n- ");
             }
         }
 
-        $weak = 'No major weak areas detected.';
-        if ($wrongAnswers->isNotEmpty()) {
-            $weakTopics = $wrongAnswers->take(2)
+        if ($wrongAnswers->isEmpty()) {
+            $recommendation = "1. Maintain retention by reviewing your notes on key definitions and standards.\n2. Proceed to the next module with confidence.";
+        } else {
+            $sampleMissed = $wrongAnswers->take(2)
                 ->map(fn ($answer) => trim((string) data_get($answer, 'question.question_text', '')))
-                ->filter()->map(fn ($text) => Str::limit($text, 80))->implode(' | ');
-            $weak = $weakTopics !== '' ? 'Review: '.$weakTopics.'.' : 'Review missed items.';
+                ->filter()->map(fn ($text) => Str::limit($text, 60))->values();
+
+            $missedSummary = $sampleMissed->isNotEmpty()
+                ? ' specifically regarding "'.$sampleMissed->implode('" and "').'"'
+                : '';
+
+            $recommendation = "1. Revisit the lecture notes and review the exact rules{$missedSummary}.\n"
+                ."2. Compare the correct answers against your selected choices to identify key conceptual distinctions.\n"
+                .'3. Re-read the module summary before retaking the assessment.';
         }
 
-        $recommendation = match (true) {
-            $attempt->percentage >= 85 => 'Keep the pace and review the missed items once for retention.',
-            $attempt->percentage >= 50 => 'Review the incorrect questions and revisit the related lesson sections before the next attempt.',
-            default => 'Revisit the module content first, then retake the quiz.',
-        };
-
         return ['strong' => $strong, 'weak' => $weak, 'recommendation' => $recommendation];
+    }
+
+    private function parseAiInsightsResponse(string $rawResponse): array
+    {
+        $raw = trim($rawResponse);
+        if ($raw === '') {
+            return ['strong' => null, 'weak' => null, 'recommendation' => null];
+        }
+
+        if (str_starts_with($raw, '{') && str_ends_with($raw, '}')) {
+            $json = json_decode($raw, true);
+            if (is_array($json)) {
+                $s = $json['strong'] ?? $json['strong_areas'] ?? $json['Strong Areas'] ?? null;
+                $w = $json['weak'] ?? $json['weak_areas'] ?? $json['Weak Areas'] ?? null;
+                $r = $json['recommendation'] ?? $json['recommendations'] ?? $json['Recommendation'] ?? null;
+                if ($s || $w || $r) {
+                    return [
+                        'strong' => is_array($s) ? implode("\n", $s) : (string) ($s ?? ''),
+                        'weak' => is_array($w) ? implode("\n", $w) : (string) ($w ?? ''),
+                        'recommendation' => is_array($r) ? implode("\n", $r) : (string) ($r ?? ''),
+                    ];
+                }
+            }
+        }
+
+        $pattern = '/(?:^|\n)\s*[*#_0-9\.\s]*(Strong Areas?|Strengths?|Weak Areas?|Weaknesses?|Areas? for Improvement|Recommendations?|Study Recommendations?|Next Steps?)\s*[:*#_\s]*(?:\n|$)/i';
+        $parts = preg_split($pattern, $raw, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+
+        $strong = null;
+        $weak = null;
+        $recommendation = null;
+
+        for ($i = 0; $i < count($parts); $i++) {
+            $item = strtolower(trim($parts[$i]));
+            $next = trim($parts[$i + 1] ?? '');
+
+            if (preg_match('/^(strong areas?|strengths?)$/i', $item)) {
+                $strong = $next;
+            } elseif (preg_match('/^(weak areas?|weaknesses?|areas? for improvement)$/i', $item)) {
+                $weak = $next;
+            } elseif (preg_match('/^(recommendations?|study recommendations?|next steps?)$/i', $item)) {
+                $recommendation = $next;
+            }
+        }
+
+        return [
+            'strong' => ! empty($strong) ? trim($strong) : null,
+            'weak' => ! empty($weak) ? trim($weak) : null,
+            'recommendation' => ! empty($recommendation) ? trim($recommendation) : null,
+        ];
     }
 
     public function getQuestions(Request $request, Module $module)
@@ -197,12 +261,15 @@ class QuizController extends Controller
             $ai = app(CloudflareAI::class);
             $answersContext = '';
             foreach ($answers as $a) {
-                $status = $a->is_correct ? 'Correct' : 'Wrong';
-                $answersContext .= "- Q: {$a->question->question_text}\n Answer: {$a->selected_option} -> {$status}\n";
+                $status = $a->is_correct ? 'Correct' : 'Incorrect';
+                $answersContext .= "- Question: {$a->question->question_text}\n  Student Selected: Option {$a->selected_option} ({$status})\n";
+                if (! $a->is_correct && ! empty($a->question->correct_option)) {
+                    $answersContext .= "  Correct Option: Option {$a->question->correct_option}\n";
+                }
             }
 
             $userPrompt = $resolver->renderTemplate($resolver->getPromptTemplate('quiz_insights', 'user_template'), [
-                'score' => (string) $attempt->percentage,
+                'score' => (string) round($attempt->percentage),
                 'module_title' => (string) $module->title,
                 'answers_context' => trim($answersContext),
             ]);
@@ -212,19 +279,39 @@ class QuizController extends Controller
                     ['role' => 'system', 'content' => $resolver->getPromptTemplate('quiz_insights', 'system')],
                     ['role' => 'user', 'content' => $userPrompt],
                 ],
-                'max_tokens' => $resolver->getMaxTokens(),
-                'temperature' => 0.6,
+                'max_tokens' => max(600, $resolver->getMaxTokens()),
+                'temperature' => 0.5,
             ]);
 
-            // Always persist the fallback insights regardless of whether the
-            // AI call returned usable text — an empty/blank AI response should
-            // not leave ai_strong/ai_weak/ai_recommendation stuck at null.
-            $attempt->update(['ai_strong' => $fallback['strong'], 'ai_weak' => $fallback['weak'], 'ai_recommendation' => $fallback['recommendation']]);
+            $rawResponse = is_string($result['response'] ?? null)
+                ? $result['response']
+                : json_encode($result['response'] ?? '');
+
+            $parsed = $this->parseAiInsightsResponse((string) $rawResponse);
+
+            $strong = ! empty($parsed['strong']) ? $parsed['strong'] : $fallback['strong'];
+            $weak = ! empty($parsed['weak']) ? $parsed['weak'] : $fallback['weak'];
+            $recommendation = ! empty($parsed['recommendation']) ? $parsed['recommendation'] : $fallback['recommendation'];
+
+            $attempt->update([
+                'ai_strong' => $strong,
+                'ai_weak' => $weak,
+                'ai_recommendation' => $recommendation,
+            ]);
         } catch (\Exception $e) {
-            $attempt->update(['ai_strong' => $fallback['strong'], 'ai_weak' => $fallback['weak'], 'ai_recommendation' => $fallback['recommendation']]);
+            $attempt->update([
+                'ai_strong' => $fallback['strong'],
+                'ai_weak' => $fallback['weak'],
+                'ai_recommendation' => $fallback['recommendation'],
+            ]);
         }
 
-        return response()->json(['success' => true, 'strong' => $attempt->ai_strong, 'weak' => $attempt->ai_weak, 'recommendation' => $attempt->ai_recommendation]);
+        return response()->json([
+            'success' => true,
+            'strong' => $attempt->ai_strong,
+            'weak' => $attempt->ai_weak,
+            'recommendation' => $attempt->ai_recommendation,
+        ]);
     }
 
     /**

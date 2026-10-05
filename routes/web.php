@@ -774,6 +774,8 @@ Route::middleware(['auth'])->prefix('student/mock-boards')->name('student.mock-b
     Route::post('{mock_board}/{mock_board_phase}/submit', [StudentMockBoardController::class, 'submit'])->name('submit');
     Route::post('{mock_board}/{mock_board_phase}/insights', [StudentMockBoardController::class, 'insights'])->name('insights');
     Route::get('{mock_board}/results', [StudentMockBoardController::class, 'results'])->name('results');
+    Route::get('{mock_board}/readiness', [StudentMockBoardController::class, 'readiness'])->name('readiness');
+    Route::get('{mock_board}/readiness/export', [StudentMockBoardController::class, 'exportReadinessExcel'])->name('readiness.export');
 });
 // Admin — Mock Board Approvals
 Route::middleware(['auth'])->prefix('admin/mock-boards')->name('admin.mock-boards.')->group(function () {

@@ -91,6 +91,11 @@ class User extends Authenticatable
         return $this->hasMany(QuizAttempt::class);
     }
 
+    public function readinessReports(): HasMany
+    {
+        return $this->hasMany(MockBoardReadinessReport::class);
+    }
+
     public function testBankQuestions(): HasMany
     {
         return $this->hasMany(TestBankQuestion::class, 'created_by');

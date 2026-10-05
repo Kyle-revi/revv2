@@ -91,37 +91,32 @@
 
     @if($hasFinishedEntireBoard && $finalScore !== null)
         @php
-            if ($finalScore >= $threshold) {
-                $blTier = 'high';
-                $blLabel = 'High Chance (Board Ready)';
-                $blIcon = 'fa-check-circle';
-                $blNote = "Your score of " . (int) round($finalScore) . "% meets the standard {$threshold}% PRC passing threshold. You demonstrate a strong likelihood of passing the Board Exam.";
-            } elseif ($finalScore >= max($threshold - 10, 50)) {
-                $blTier = 'moderate';
-                $blLabel = 'Moderate Chance';
-                $blIcon = 'fa-exclamation-circle';
-                $blGap = round($threshold - $finalScore, 1);
-                $blNote = "Your score of " . (int) round($finalScore) . "% is {$blGap}% shy of the {$threshold}% threshold. Focused reinforcement in weak domains will help secure a passing mark.";
-            } else {
-                $blTier = 'low';
-                $blLabel = 'Low Chance (At-Risk)';
-                $blIcon = 'fa-times-circle';
-                $blGap = round($threshold - $finalScore, 1);
-                $blNote = "Your score of " . (int) round($finalScore) . "% is {$blGap}% below the {$threshold}% threshold (At-Risk zone). Intensive review and remediation are advised.";
-            }
+            $tierData = \App\Services\MockBoardStatisticsService::calculateReadinessTier((float) $finalScore, (int) $threshold);
+            $blTier = $tierData['tier'];
+            $blLabel = $tierData['label'];
+            $blIcon = $tierData['icon'];
+            $blNote = $tierData['description'];
+            $blBoxClass = $tierData['color'];
         @endphp
-        <div class="growth-box {{ $blTier === 'high' ? 'positive' : ($blTier === 'moderate' ? 'neutral' : 'negative') }}" style="margin-bottom: 24px;">
-            <div class="growth-icon">
-                <i class="fas {{ $blIcon }}"></i>
+        <div class="growth-box {{ $blBoxClass }}" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 16px; flex: 1; min-width: 280px;">
+                <div class="growth-icon">
+                    <i class="fas {{ $blIcon }}"></i>
+                </div>
+                <div>
+                    <p class="growth-label">Board Passing Likelihood</p>
+                    <p class="growth-value">
+                        {{ $blLabel }}
+                        <span class="growth-note">
+                            &bull; {{ $blNote }}
+                        </span>
+                    </p>
+                </div>
             </div>
-            <div>
-                <p class="growth-label">Board Passing Likelihood</p>
-                <p class="growth-value">
-                    {{ $blLabel }}
-                    <span class="growth-note">
-                        &bull; {{ $blNote }}
-                    </span>
-                </p>
+            <div style="flex-shrink: 0;">
+                <a href="{{ route('student.mock-boards.readiness', $mockBoard) }}" class="btn-readiness" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 9px; font-weight: 600; font-size: 13.5px; text-decoration: none; background: #245E55; color: #ffffff; white-space: nowrap; box-shadow: 0 2px 4px rgba(36,94,85,0.25); transition: all 0.2s ease;">
+                    <i class="fas fa-file-invoice"></i> View Readiness Report
+                </a>
             </div>
         </div>
     @endif

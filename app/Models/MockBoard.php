@@ -104,6 +104,14 @@ class MockBoard extends Model
     }
 
     /**
+     * Student readiness reports generated for this mock board.
+     */
+    public function readinessReports(): HasMany
+    {
+        return $this->hasMany(MockBoardReadinessReport::class);
+    }
+
+    /**
      * Check if this mock board is currently active (within review period).
      */
     public function isActive(): bool
