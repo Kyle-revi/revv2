@@ -698,24 +698,26 @@ class MockBoardReadinessService
 
             // Summary Section
             fputcsv($handle, ['=== 1. READINESS KPI SUMMARY ===']);
-            fputcsv($handle, ['Readiness Score (Best Post-Test)', $report->readiness_percentage.'%']);
-            fputcsv($handle, ['Likelihood Tier', $report->tier_label]);
-            fputcsv($handle, ['Gap to Pass Percentage', $report->gap_percentage.'%']);
-            fputcsv($handle, ['Estimated Items Needed to Pass', $report->gap_items]);
-            fputcsv($handle, ['Diagnostic Pre-Test Score', $report->pre_test_score.'%']);
-            fputcsv($handle, ['Score Improvement (Gain)', ($report->improvement_percentage >= 0 ? '+' : '').$report->improvement_percentage.'%']);
-            fputcsv($handle, ['Performance Consistency', $report->consistency_status]);
+            fputcsv($handle, ['Metric / Indicator', 'Score / Value', 'Remarks']);
+            fputcsv($handle, ['Readiness Score (Best Post-Test)', $report->readiness_percentage.'%', $report->tier_label]);
+            fputcsv($handle, ['Likelihood Tier', $report->tier_label, 'Current readiness status']);
+            fputcsv($handle, ['Gap to Pass Percentage', $report->gap_percentage.'%', 'Needed to reach passing threshold']);
+            fputcsv($handle, ['Estimated Items Needed to Pass', $report->gap_items, 'Questions needed']);
+            fputcsv($handle, ['Diagnostic Pre-Test Score', $report->pre_test_score.'%', 'Baseline score']);
+            fputcsv($handle, ['Score Improvement (Gain)', ($report->improvement_percentage >= 0 ? '+' : '').$report->improvement_percentage.'%', 'Gain from Pre-Test']);
+            fputcsv($handle, ['Performance Consistency', $report->consistency_status, 'Score stability across attempts']);
             fputcsv($handle, []);
 
             // Peer Benchmark Section
             if (! empty($report->peer_benchmark)) {
                 $peer = $report->peer_benchmark;
                 fputcsv($handle, ['=== 2. PEER & COHORT BENCHMARK ===']);
-                fputcsv($handle, ['Batch Examinees Count', $peer['cohort_size'] ?? 0]);
-                fputcsv($handle, ['Batch Average Score', ($peer['batch_average'] ?? 0).'%']);
-                fputcsv($handle, ['Your Score vs Batch Average', (($peer['score_diff_from_batch'] ?? 0) >= 0 ? '+' : '').($peer['score_diff_from_batch'] ?? 0).'%']);
-                fputcsv($handle, ['Percentile Rank', ($peer['percentile_rank'] ?? 0).'th Percentile']);
-                fputcsv($handle, ['Cohort Standing', 'Higher than '.($peer['higher_than_percentage'] ?? 0).'% of examinees']);
+                fputcsv($handle, ['Metric / Indicator', 'Score / Value', 'Standing Description']);
+                fputcsv($handle, ['Batch Examinees Count', $peer['cohort_size'] ?? 0, 'Total examinees in cohort']);
+                fputcsv($handle, ['Batch Average Score', ($peer['batch_average'] ?? 0).'%', 'Cohort average score']);
+                fputcsv($handle, ['Your Score vs Batch Average', (($peer['score_diff_from_batch'] ?? 0) >= 0 ? '+' : '').($peer['score_diff_from_batch'] ?? 0).'%', 'Variance from cohort']);
+                fputcsv($handle, ['Percentile Rank', ($peer['percentile_rank'] ?? 0).'th Percentile', 'Standing rank']);
+                fputcsv($handle, ['Cohort Standing', 'Higher than '.($peer['higher_than_percentage'] ?? 0).'% of examinees', 'Relative standing']);
                 fputcsv($handle, []);
             }
 
@@ -723,10 +725,10 @@ class MockBoardReadinessService
             if (! empty($report->historical_comparison)) {
                 $hist = $report->historical_comparison;
                 fputcsv($handle, ['=== 3. HISTORICAL LICENSURE BENCHMARK ===']);
-                fputcsv($handle, ['Exam Label', $hist['exam_label'] ?? 'PRC Licensure Exam']);
-                fputcsv($handle, ['Exam Period / Year', $hist['exam_period_or_year'] ?? 'N/A']);
-                fputcsv($handle, ['National Passing Rate', ($hist['national_passing_rate'] ?? 0).'%']);
-                fputcsv($handle, ['Batch Mock Board Passing Rate', ($hist['batch_passing_rate'] ?? 0).'%']);
+                fputcsv($handle, ['Metric / Indicator', 'Score / Value', 'Historical Data Reference']);
+                fputcsv($handle, ['Exam Label', $hist['exam_label'] ?? 'PRC Licensure Exam', $hist['exam_period_or_year'] ?? 'N/A']);
+                fputcsv($handle, ['National Passing Rate', ($hist['national_passing_rate'] ?? 0).'%', 'Official PRC national passing rate']);
+                fputcsv($handle, ['Batch Mock Board Passing Rate', ($hist['batch_passing_rate'] ?? 0).'%', 'Batch pass rate in this mock board']);
                 fputcsv($handle, []);
             }
 
@@ -766,12 +768,13 @@ class MockBoardReadinessService
             if (! empty($report->ai_action_plan)) {
                 $plan = $report->ai_action_plan;
                 fputcsv($handle, ['=== 6. PERSONALIZED ACTION PLAN ===']);
+                fputcsv($handle, ['Section', 'Directive / Action Step']);
                 fputcsv($handle, ['Readiness Summary Narrative', $plan['summary_narrative'] ?? '']);
                 fputcsv($handle, ['Priority Focus Domains', implode(', ', (array) ($plan['priority_domains'] ?? []))]);
                 fputcsv($handle, ['Key Concepts for Review', implode(' | ', (array) ($plan['review_topics'] ?? []))]);
-                fputcsv($handle, ['Step-by-Step Study Plan']);
-                foreach ((array) ($plan['study_steps'] ?? []) as $step) {
-                    fputcsv($handle, ['-', $step]);
+                fputcsv($handle, ['Step-by-Step Study Plan', '']);
+                foreach ((array) ($plan['study_steps'] ?? []) as $idx => $step) {
+                    fputcsv($handle, ['Step '.($idx + 1), $step]);
                 }
             }
 

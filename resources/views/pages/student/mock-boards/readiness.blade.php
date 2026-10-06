@@ -32,9 +32,9 @@
         <a href="{{ route('student.mock-boards.results', $mockBoard) }}" class="btn-action-outline">
             <i class="fas fa-arrow-left"></i> Back to Results
         </a>
-        <a href="{{ route('student.mock-boards.readiness.export', $mockBoard) }}" class="btn-action-secondary">
-            <i class="fas fa-file-excel"></i> Export to Excel
-        </a>
+        <button type="button" onclick="exportReadinessToExcel()" class="btn-action-secondary" title="Download Excel (.xlsx)">
+            <i class="fas fa-file-excel"></i> Export to Excel (.xlsx)
+        </button>
         <button type="button" onclick="window.print()" class="btn-action-primary">
             <i class="fas fa-print"></i> Print Report
         </button>
@@ -591,10 +591,12 @@
         border-radius: 9px;
         font-size: 13.5px;
         font-weight: 500;
+        font-family: inherit;
         color: #065f46;
         background: #ecfdf5;
         border: 1px solid #a7f3d0;
         text-decoration: none;
+        cursor: pointer;
         transition: all 0.2s ease;
     }
     .btn-action-secondary:hover {
@@ -1312,4 +1314,267 @@
         }
     }
 </style>
+@endsection
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+    const readinessExportData = {
+        studentName: @json($user->name),
+        studentId: @json($user->idnumber ?? '—'),
+        studentProgram: @json(strtoupper($user->program ?? $mockBoard->program ?? 'N/A')),
+        boardTitle: @json($mockBoard->title),
+        generatedAt: @json($report->generated_at?->format('F d, Y h:i A') ?? now()->format('F d, Y h:i A')),
+        passingThreshold: @json((int) ($mockBoard->passing_percentage ?? 75)),
+        readinessScore: @json(round($summary['readiness_percentage'], 1)),
+        tierLabel: @json($tierData['label']),
+        tierDescription: @json($tierData['description']),
+        gapPercentage: @json($summary['gap_percentage']),
+        gapItems: @json($summary['gap_items']),
+        preTestScore: @json($report->pre_test_score ?? null),
+        improvementPercentage: @json($report->improvement_percentage ?? null),
+        consistencyStatus: @json($report->consistency_status ?? 'N/A'),
+        peer: @json($peer),
+        hist: @json($hist),
+        domains: @json($domains['list'] ?? []),
+        repeatedlyMissed: @json($itemInsights['repeatedly_missed_items'] ?? []),
+        regressedItems: @json($itemInsights['regressed_items'] ?? []),
+        aiPlan: @json($aiPlan),
+    };
+
+    function exportReadinessToExcel() {
+        if (typeof XLSX === 'undefined') {
+            window.location.href = "{{ route('student.mock-boards.readiness.export', $mockBoard) }}";
+            return;
+        }
+
+        const d = readinessExportData;
+        const wb = XLSX.utils.book_new();
+
+        // -------------------------------------------------------------
+        // Sheet 1: Readiness Summary
+        // -------------------------------------------------------------
+        const summaryRows = [
+            ['REVISO - MOCK BOARD STUDENT READINESS REPORT'],
+            ['Report Generated At', d.generatedAt],
+            ['Student Name', d.studentName],
+            ['Student ID Number', d.studentId],
+            ['Academic Program', d.studentProgram],
+            ['Mock Board Examination', d.boardTitle],
+            ['Passing Standard Benchmark', d.passingThreshold + '%'],
+            [],
+            ['1. READINESS KPI SUMMARY', '', ''],
+            ['Metric / Indicator', 'Score / Value', 'Remarks & Diagnostic Assessment'],
+            [
+                'Board Readiness Score (Best Post-Test)',
+                d.readinessScore + '%',
+                d.tierLabel + ' (' + d.tierDescription + ')'
+            ],
+            [
+                'Benchmark Passing Standard',
+                d.passingThreshold + '%',
+                (d.readinessScore >= d.passingThreshold ? 'Target Met (Passed)' : 'Below Benchmark')
+            ],
+            [
+                'Gap to Pass Benchmark',
+                d.gapPercentage + '%',
+                (d.gapPercentage > 0 ? 'Need ~' + d.gapItems + ' more correct items to pass' : 'Threshold achieved')
+            ],
+            [
+                'Diagnostic Pre-Test Score',
+                (d.preTestScore !== null ? d.preTestScore + '%' : 'N/A'),
+                'Baseline diagnostic score before post-test'
+            ],
+            [
+                'Overall Score Improvement (Gain)',
+                (d.improvementPercentage !== null ? (d.improvementPercentage >= 0 ? '+' : '') + d.improvementPercentage + '%' : 'N/A'),
+                'Diagnostic-to-post-test growth rate'
+            ],
+            [
+                'Performance Consistency',
+                d.consistencyStatus,
+                'Post-test score stability across attempts'
+            ],
+        ];
+
+        if (d.peer && Object.keys(d.peer).length > 0) {
+            summaryRows.push([]);
+            summaryRows.push(['2. PEER & COHORT BENCHMARK', '', '']);
+            summaryRows.push(['Metric / Indicator', 'Value', 'Standing Description']);
+            summaryRows.push(['Batch Examinees Count', d.peer.cohort_size || 0, 'Total examinees in cohort']);
+            summaryRows.push(['Batch Average Score', (d.peer.batch_average || 0) + '%', 'Overall cohort average']);
+            summaryRows.push([
+                'Your Score vs Batch Average',
+                ((d.peer.score_diff_from_batch || 0) >= 0 ? '+' : '') + (d.peer.score_diff_from_batch || 0) + '%',
+                ((d.peer.score_diff_from_batch || 0) >= 0 ? 'Above cohort average' : 'Below cohort average')
+            ]);
+            summaryRows.push([
+                'Percentile Rank',
+                (d.peer.percentile_rank || 0) + 'th Percentile',
+                'Higher than ' + (d.peer.higher_than_percentage || 0) + '% of batch examinees'
+            ]);
+        }
+
+        if (d.hist && Object.keys(d.hist).length > 0) {
+            summaryRows.push([]);
+            summaryRows.push(['3. HISTORICAL LICENSURE BENCHMARK', '', '']);
+            summaryRows.push(['Metric / Indicator', 'Value', 'Remarks']);
+            summaryRows.push(['Exam Benchmark Reference', d.hist.exam_label || 'PRC Licensure Exam', d.hist.exam_period_or_year || 'N/A']);
+            summaryRows.push(['National Historical Passing Rate', (d.hist.national_passing_rate || 0) + '%', 'Official PRC national benchmark']);
+            summaryRows.push(['Current Batch Passing Rate', (d.hist.batch_passing_rate || 0) + '%', 'Batch pass rate in this mock board']);
+        }
+
+        const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+        wsSummary['!cols'] = [
+            { wch: 38 },
+            { wch: 22 },
+            { wch: 55 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsSummary, 'Readiness Summary');
+
+        // -------------------------------------------------------------
+        // Sheet 2: Domain Mastery
+        // -------------------------------------------------------------
+        const domainRows = [
+            ['DOMAIN & SUBJECT MASTERY BREAKDOWN'],
+            ['Mock Board:', d.boardTitle],
+            ['Student Name:', d.studentName],
+            ['Exported At:', d.generatedAt],
+            [],
+            ['#', 'Domain / Subject Area', 'Pre-Test Score', 'Post-Test Score', 'Score Gain', 'Correct Items', 'Total Items', 'Mastery Status']
+        ];
+
+        if (d.domains && d.domains.length > 0) {
+            d.domains.forEach(function(item, idx) {
+                domainRows.push([
+                    idx + 1,
+                    item.domain || 'General',
+                    item.pre_score !== null && item.pre_score !== undefined ? item.pre_score + '%' : 'N/A',
+                    (item.post_score !== null && item.post_score !== undefined ? item.post_score : 0) + '%',
+                    item.change !== null && item.change !== undefined ? ((item.change >= 0 ? '+' : '') + item.change + '%') : 'N/A',
+                    item.correct_items || 0,
+                    item.total_items || 0,
+                    item.status || 'Developing'
+                ]);
+            });
+        } else {
+            domainRows.push(['—', 'No domain breakdown data available', '—', '—', '—', '—', '—', '—']);
+        }
+
+        const wsDomain = XLSX.utils.aoa_to_sheet(domainRows);
+        wsDomain['!cols'] = [
+            { wch: 6 },
+            { wch: 36 },
+            { wch: 16 },
+            { wch: 16 },
+            { wch: 16 },
+            { wch: 15 },
+            { wch: 14 },
+            { wch: 20 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsDomain, 'Domain Mastery');
+
+        // -------------------------------------------------------------
+        // Sheet 3: Item Analysis & Conceptual Gaps
+        // -------------------------------------------------------------
+        const gapsRows = [
+            ['HIGH-YIELD ITEM & CONCEPTUAL GAPS ANALYSIS'],
+            ['Mock Board:', d.boardTitle],
+            ['Student Name:', d.studentName],
+            ['Exported At:', d.generatedAt],
+            [],
+            ['Gap Type', 'Domain / Subject', 'Question Concept / Stem', 'Detailed Explanation & Core Principle']
+        ];
+
+        let hasGaps = false;
+        if (d.repeatedlyMissed && d.repeatedlyMissed.length > 0) {
+            hasGaps = true;
+            d.repeatedlyMissed.forEach(function(item) {
+                gapsRows.push([
+                    'Repeatedly Missed',
+                    item.domain || 'General',
+                    item.stem || '—',
+                    item.explanation || '—'
+                ]);
+            });
+        }
+
+        if (d.regressedItems && d.regressedItems.length > 0) {
+            hasGaps = true;
+            d.regressedItems.forEach(function(item) {
+                gapsRows.push([
+                    'Regressed Item (Passed Pre, Missed Post)',
+                    item.domain || 'General',
+                    item.stem || '—',
+                    item.explanation || '—'
+                ]);
+            });
+        }
+
+        if (!hasGaps) {
+            gapsRows.push(['No Critical Gaps', 'All Domains', 'No repeated errors or regressions recorded between Pre-Test and Post-Test', 'Solid retention across tested items']);
+        }
+
+        const wsGaps = XLSX.utils.aoa_to_sheet(gapsRows);
+        wsGaps['!cols'] = [
+            { wch: 36 },
+            { wch: 28 },
+            { wch: 55 },
+            { wch: 65 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsGaps, 'Item Analysis & Gaps');
+
+        // -------------------------------------------------------------
+        // Sheet 4: Action Plan & Recommendations
+        // -------------------------------------------------------------
+        const planRows = [
+            ['PERSONALIZED ACTION PLAN & STUDY RECOMMENDATIONS'],
+            ['Mock Board:', d.boardTitle],
+            ['Student Name:', d.studentName],
+            ['Exported At:', d.generatedAt],
+            [],
+            ['Section', 'Details & Recommendations']
+        ];
+
+        const plan = d.aiPlan || {};
+        if (plan.summary_narrative) {
+            planRows.push(['Readiness Summary Narrative', plan.summary_narrative]);
+        }
+        if (plan.priority_domains && plan.priority_domains.length > 0) {
+            planRows.push(['Priority Focus Domains', plan.priority_domains.join(', ')]);
+        }
+        if (plan.review_topics && plan.review_topics.length > 0) {
+            planRows.push(['Specific Concepts to Revisit', plan.review_topics.join(' | ')]);
+        }
+
+        planRows.push([]);
+        planRows.push(['STEP-BY-STEP STUDY DIRECTIVES', '']);
+        planRows.push(['Step #', 'Action Item']);
+
+        if (plan.study_steps && plan.study_steps.length > 0) {
+            plan.study_steps.forEach(function(step, idx) {
+                planRows.push(['Step ' + (idx + 1), step]);
+            });
+        } else {
+            planRows.push(['Step 1', 'Review core formulas, standards, and lecture handouts before your next mock board attempt.']);
+        }
+
+        const wsPlan = XLSX.utils.aoa_to_sheet(planRows);
+        wsPlan['!cols'] = [
+            { wch: 30 },
+            { wch: 80 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsPlan, 'Action Plan & Recommendations');
+
+        // -------------------------------------------------------------
+        // Download generated .xlsx file
+        // -------------------------------------------------------------
+        const cleanStudent = (d.studentName || 'Student').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const cleanBoard = (d.boardTitle || 'MockBoard').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const filename = 'Readiness_Report_' + cleanStudent + '_' + cleanBoard + '_' + dateStr + '.xlsx';
+
+        XLSX.writeFile(wb, filename);
+    }
+</script>
 @endsection
