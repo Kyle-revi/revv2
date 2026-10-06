@@ -249,6 +249,7 @@
         }
 
         let text = rawText.trim();
+        text = text.replace(/•\s*/g, '- ');
         text = text.replace(/([^\n])\s*-\s+/g, '$1\n- ');
         text = text.replace(/([^\n])\s*(\d+\.\s+)/g, '$1\n$2');
 
@@ -307,10 +308,16 @@
         return html || `<p style="margin:0;">${text}</p>`;
     }
 
-    function renderAiInsightsCard(strong, weak, recommendation) {
+    function renderAiInsightsCard(strong, weak, recommendation, phaseId = '') {
         const strongHtml = formatAiInsightHtml(strong, 'None detected');
         const weakHtml = formatAiInsightHtml(weak, 'No critical weak areas detected');
         const recHtml = formatAiInsightHtml(recommendation, 'Review the phase concepts before retaking.');
+
+        const refreshBtn = phaseId ? `
+            <button type="button" class="qz-btn qz-btn-outline" style="font-size:12px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#334155;font-weight:500;" onclick="refreshPhaseAiInsights('${phaseId}')">
+                <i class="fas fa-sync-alt"></i> Refresh Insight
+            </button>
+        ` : '';
 
         return `
             <div class="qz-ai-header">
@@ -321,7 +328,10 @@
                         <p class="qz-ai-subtitle">Personalized feedback based on your responses</p>
                     </div>
                 </div>
-                <span class="qz-ai-badge">Instant Analysis</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    ${refreshBtn}
+                    <span class="qz-ai-badge">Instant Analysis</span>
+                </div>
             </div>
             <div class="qz-ai-grid">
                 <div class="qz-ai-card qz-ai-card-strong">
@@ -387,7 +397,7 @@
         var box = document.getElementById('aiBox_' + phaseId);
         if (!box) return;
 
-        box.innerHTML = renderAiInsightsCard(data.strong, data.weak, data.recommendation);
+        box.innerHTML = renderAiInsightsCard(data.strong, data.weak, data.recommendation, phaseId);
     }
 
     function loadAiInsights(phaseId) {
@@ -410,9 +420,15 @@
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
+            var strongText = (res.strong !== undefined && res.strong !== null && res.strong !== '') 
+                ? res.strong 
+                : (res.strong_areas ? res.strong_areas.join('\n') : '');
+            var weakText = (res.weak !== undefined && res.weak !== null && res.weak !== '') 
+                ? res.weak 
+                : (res.weak_areas ? res.weak_areas.join('\n') : '');
             var data = {
-                strong: (res.strong_areas || []).join(', '),
-                weak: (res.weak_areas || []).join(', '),
+                strong: strongText,
+                weak: weakText,
                 recommendation: res.recommendation,
             };
             cachedInsights[phaseId] = data;
@@ -420,6 +436,41 @@
         })
         .catch(function () {
             box.innerHTML = renderAiInsightsMessage('Failed to load insights.');
+        });
+    }
+
+    function refreshPhaseAiInsights(phaseId) {
+        var box = document.getElementById('aiBox_' + phaseId);
+        if (box) {
+            box.innerHTML = renderAiInsightsLoading();
+        }
+        cachedInsights[phaseId] = null;
+        var url = insightsRoutes[phaseId];
+        if (!url) return;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify({ force_refresh: 1 }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            var strongText = (res.strong !== undefined && res.strong !== null && res.strong !== '') 
+                ? res.strong 
+                : (res.strong_areas ? res.strong_areas.join('\n') : '');
+            var weakText = (res.weak !== undefined && res.weak !== null && res.weak !== '') 
+                ? res.weak 
+                : (res.weak_areas ? res.weak_areas.join('\n') : '');
+            var data = {
+                strong: strongText,
+                weak: weakText,
+                recommendation: res.recommendation,
+            };
+            cachedInsights[phaseId] = data;
+            renderAiBox(phaseId, data);
+        })
+        .catch(function () {
+            box.innerHTML = renderAiInsightsMessage('Failed to refresh insights.');
         });
     }
 

@@ -656,16 +656,97 @@ class StudentMockBoardController extends Controller
         $attempt = MockBoardAttempt::where([
             'user_id' => $user->id,
             'mock_board_phase_id' => $mockBoardPhase->id,
-        ])->with('quizAttempt.answers.question')->first();
+        ])->with(['quizAttempt.answers.question'])->first();
 
         if (! $attempt || ! $attempt->quizAttempt) {
             return response()->json(['message' => 'Attempt data not found.'], 404);
         }
 
+        $quizAttempt = $attempt->quizAttempt;
+        $forceRefresh = $request->boolean('force_refresh') || $request->boolean('refresh');
+
+        $isGenericMba = empty($attempt->ai_strong)
+            || str_contains($attempt->ai_strong, 'None identified yet')
+            || str_contains($attempt->ai_strong, '% Mastery)')
+            || str_contains($attempt->ai_strong, 'None detected');
+
+        $qaHasRealAi = ! empty($quizAttempt->ai_strong)
+            && ! str_contains($quizAttempt->ai_strong, '% Mastery)')
+            && ! str_contains($quizAttempt->ai_strong, 'None identified yet');
+
+        // 1. If QuizAttempt already has the rich AI generated insights (from assessment take page), reuse and sync!
+        if (! $forceRefresh && $qaHasRealAi) {
+            $attempt->update([
+                'ai_strong' => $quizAttempt->ai_strong,
+                'ai_weak' => $quizAttempt->ai_weak,
+                'ai_recommendation' => $quizAttempt->ai_recommendation,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'strong' => $quizAttempt->ai_strong,
+                'weak' => $quizAttempt->ai_weak,
+                'recommendation' => $quizAttempt->ai_recommendation,
+                'strong_areas' => array_values(array_filter(explode("\n", (string) $quizAttempt->ai_strong))),
+                'weak_areas' => array_values(array_filter(explode("\n", (string) $quizAttempt->ai_weak))),
+            ]);
+        }
+
+        // 2. If MockBoardAttempt already has valid AI insights
+        if (! $forceRefresh && ! empty($attempt->ai_strong) && ! $isGenericMba) {
+            return response()->json([
+                'success' => true,
+                'strong' => $attempt->ai_strong,
+                'weak' => $attempt->ai_weak,
+                'recommendation' => $attempt->ai_recommendation,
+                'strong_areas' => array_values(array_filter(explode("\n", (string) $attempt->ai_strong))),
+                'weak_areas' => array_values(array_filter(explode("\n", (string) $attempt->ai_weak))),
+            ]);
+        }
+
+        // 3. Delegate to QuizController / AI service so it uses the exact same Gemini prompt and analysis
+        if ($mockBoardPhase->module) {
+            try {
+                $quizController = app(QuizController::class);
+                $subRequest = Request::create(
+                    route('quiz.insights', $mockBoardPhase->module->id),
+                    'POST',
+                    [
+                        'attempt_id' => $quizAttempt->id,
+                        'force_refresh' => $forceRefresh ? 1 : 0,
+                    ]
+                );
+                $subRequest->setUserResolver(fn () => $user);
+
+                $aiResponse = $quizController->getAiInsights($subRequest, $mockBoardPhase->module);
+                $aiData = $aiResponse->getData(true);
+
+                if (! empty($aiData['success']) && ! empty($aiData['strong'])) {
+                    $attempt->update([
+                        'ai_strong' => $aiData['strong'],
+                        'ai_weak' => $aiData['weak'] ?? null,
+                        'ai_recommendation' => $aiData['recommendation'] ?? null,
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'strong' => $aiData['strong'],
+                        'weak' => $aiData['weak'] ?? null,
+                        'recommendation' => $aiData['recommendation'] ?? null,
+                        'strong_areas' => array_values(array_filter(explode("\n", (string) $aiData['strong']))),
+                        'weak_areas' => array_values(array_filter(explode("\n", (string) ($aiData['weak'] ?? '')))),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('MockBoard insights delegate error: '.$e->getMessage());
+            }
+        }
+
+        // 4. Fallback domain-level summary if AI generation fails
         $subjectPerformance = [];
         $weakDetails = [];
 
-        foreach ($attempt->quizAttempt->answers as $answer) {
+        foreach ($quizAttempt->answers as $answer) {
             $question = $answer->question;
             $subject = ! empty($question?->domain)
                 ? trim($question->domain)
@@ -695,9 +776,9 @@ class StudentMockBoardController extends Controller
             $accuracy = ($data['correct'] / $data['total']) * 100;
 
             if ($accuracy >= 75) {
-                $strongAreas[] = "$subject (".round($accuracy).'% Mastery)';
+                $strongAreas[] = "• $subject (".round($accuracy).'% Mastery)';
             } else {
-                $weakAreas[] = "$subject (".round($accuracy).'% Mastery)';
+                $weakAreas[] = "• $subject (".round($accuracy).'% Mastery)';
             }
         }
 
@@ -706,7 +787,7 @@ class StudentMockBoardController extends Controller
         } elseif (empty($weakAreas)) {
             $recommendation = "1. Maintain peak performance across all board examination domains with regular spaced-repetition drills.\n2. Proceed to the next mock board phase with high confidence.";
         } else {
-            $weakDomainNames = array_map(fn ($val) => explode(' (', $val)[0], $weakAreas);
+            $weakDomainNames = array_map(fn ($val) => trim(str_replace('•', '', explode(' (', $val)[0])), $weakAreas);
             $targetedSteps = [];
             $targetedSteps[] = '1. Priority Review: Focus your study sessions immediately on your lowest-scoring domains: '.implode(', ', $weakDomainNames).'.';
 
@@ -734,9 +815,12 @@ class StudentMockBoardController extends Controller
         ]);
 
         return response()->json([
+            'success' => true,
+            'strong' => empty($strongAreas) ? 'None identified yet' : implode("\n", $strongAreas),
+            'weak' => empty($weakAreas) ? 'None identified yet' : implode("\n", $weakAreas),
+            'recommendation' => $recommendation,
             'strong_areas' => $strongAreas,
             'weak_areas' => $weakAreas,
-            'recommendation' => $recommendation,
         ]);
     }
 
@@ -784,6 +868,7 @@ class StudentMockBoardController extends Controller
         // collapse those extra phases onto one row.
         $rawAttemptsByPhaseId = MockBoardAttempt::where('user_id', $user->id)
             ->where('mock_board_id', $mockBoard->id)
+            ->with('quizAttempt')
             ->get()
             ->keyBy('mock_board_phase_id');
 
@@ -792,14 +877,41 @@ class StudentMockBoardController extends Controller
                 return null;
             }
 
+            $qa = $attempt->quizAttempt;
+            $aiStrong = $attempt->ai_strong;
+            $aiWeak = $attempt->ai_weak;
+            $aiRec = $attempt->ai_recommendation;
+
+            $isGenericMba = empty($aiStrong)
+                || str_contains($aiStrong, 'None identified yet')
+                || str_contains($aiStrong, '% Mastery)')
+                || str_contains($aiStrong, 'None detected');
+
+            $qaHasRealAi = $qa
+                && ! empty($qa->ai_strong)
+                && ! str_contains($qa->ai_strong, '% Mastery)')
+                && ! str_contains($qa->ai_strong, 'None identified yet');
+
+            if ($qaHasRealAi && $isGenericMba) {
+                $aiStrong = $qa->ai_strong;
+                $aiWeak = $qa->ai_weak;
+                $aiRec = $qa->ai_recommendation;
+
+                $attempt->update([
+                    'ai_strong' => $aiStrong,
+                    'ai_weak' => $aiWeak,
+                    'ai_recommendation' => $aiRec,
+                ]);
+            }
+
             return (object) [
                 'score' => $attempt->score,
                 'total_questions' => $attempt->total,
                 'percentage' => $attempt->percentage,
                 'passed' => $attempt->passed,
-                'ai_strong' => $attempt->ai_strong,
-                'ai_weak' => $attempt->ai_weak,
-                'ai_recommendation' => $attempt->ai_recommendation,
+                'ai_strong' => $aiStrong,
+                'ai_weak' => $aiWeak,
+                'ai_recommendation' => $aiRec,
             ];
         };
 

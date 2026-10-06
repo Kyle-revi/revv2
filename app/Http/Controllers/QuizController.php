@@ -480,12 +480,28 @@ class QuizController extends Controller
                 'ai_weak' => $weak,
                 'ai_recommendation' => $recommendation,
             ]);
+
+            if ($attempt->mock_board_id) {
+                MockBoardAttempt::where('quiz_attempt_id', $attempt->id)->update([
+                    'ai_strong' => $strong,
+                    'ai_weak' => $weak,
+                    'ai_recommendation' => $recommendation,
+                ]);
+            }
         } catch (\Exception $e) {
             $attempt->update([
                 'ai_strong' => $fallback['strong'],
                 'ai_weak' => $fallback['weak'],
                 'ai_recommendation' => $fallback['recommendation'],
             ]);
+
+            if ($attempt->mock_board_id) {
+                MockBoardAttempt::where('quiz_attempt_id', $attempt->id)->update([
+                    'ai_strong' => $fallback['strong'],
+                    'ai_weak' => $fallback['weak'],
+                    'ai_recommendation' => $fallback['recommendation'],
+                ]);
+            }
         }
 
         return response()->json([
