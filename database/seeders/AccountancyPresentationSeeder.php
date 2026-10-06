@@ -12,7 +12,6 @@ use App\Models\QuizAnswer;
 use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
 use App\Models\User;
-use App\Services\MockBoardReadinessService;
 use App\Services\MockBoardStatisticsService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -1280,12 +1279,8 @@ class AccountancyPresentationSeeder extends Seeder
             );
         }
 
-        // 4. Populate Student Attempts
+        // 4. Populate Student Attempts (Remaining 9 classmates; 23-9991 answers manually)
         $studentsConfig = [
-            '23-9991' => [
-                'pre_correct' => [0, 1, 2, 5, 6],
-                'post_correct' => [0, 2, 5], // 30% low score
-            ],
             '23-9992' => [
                 'pre_correct' => [0, 1, 2, 3, 5, 6, 7, 8],
                 'post_correct' => [0, 1, 2, 3, 4, 5, 6, 7, 8],
@@ -1439,15 +1434,6 @@ class AccountancyPresentationSeeder extends Seeder
             app(MockBoardStatisticsService::class)->computeClassStatistics($mockBoard);
         } catch (\Throwable $e) {
             // Ignore if calculation occurs during UI view
-        }
-
-        $targetStudent = User::where('idnumber', '23-9991')->first();
-        if ($targetStudent) {
-            try {
-                app(MockBoardReadinessService::class)->getOrGenerateReport($mockBoard, $targetStudent, true);
-            } catch (\Throwable $e) {
-                // Ignore if report generates during student dashboard view
-            }
         }
     }
 

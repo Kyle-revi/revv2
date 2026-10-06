@@ -9,7 +9,6 @@ use App\Models\QuizAnswer;
 use App\Models\QuizAttempt;
 use App\Models\QuizQuestion;
 use App\Models\User;
-use App\Services\MockBoardReadinessService;
 use App\Services\MockBoardStatisticsService;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
@@ -438,11 +437,6 @@ return new class extends Migration
             // Student 23-9991 (Juan Dela Cruz) gets LOW SCORE: 3/10 (30%) on Pre-Boards
             // Other 9 students get passing/developing scores (60% to 90%)
             $studentsConfig = [
-                // Target student: Juan Dela Cruz (23-9991) -> LOW SCORE: 3/10 (30%)
-                '23-9991' => [
-                    'pre_correct' => [0, 1, 2, 5, 6], // 5/10 (50%)
-                    'post_correct' => [0, 2, 5],       // 3/10 (30%) -> FAR: 2/5 (40%), Auditing: 1/5 (20% - WEAKEST)
-                ],
                 '23-9992' => [
                     'pre_correct' => [0, 1, 2, 3, 5, 6, 7, 8],
                     'post_correct' => [0, 1, 2, 3, 4, 5, 6, 7, 8], // 90%
@@ -597,16 +591,6 @@ return new class extends Migration
                 app(MockBoardStatisticsService::class)->computeClassStatistics($mockBoard);
             } catch (Throwable $e) {
                 // Ignore if computation succeeds on page load
-            }
-
-            // 8. Generate Readiness Report for Juan Dela Cruz (23-9991)
-            $targetStudent = User::where('idnumber', '23-9991')->first();
-            if ($targetStudent) {
-                try {
-                    app(MockBoardReadinessService::class)->getOrGenerateReport($mockBoard, $targetStudent, true);
-                } catch (Throwable $e) {
-                    // Ignore if generation succeeds on page load
-                }
             }
         });
     }
