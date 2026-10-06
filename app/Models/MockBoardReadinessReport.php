@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\MockBoardReadinessService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -124,6 +125,18 @@ class MockBoardReadinessReport extends Model
                             fn ($dom) => in_array($dom, $validNames, true)
                         ));
                     }
+                }
+
+                // Cleanse narrative and study steps into direct second-person address ("You" / "Your")
+                if (! empty($decoded['summary_narrative'])) {
+                    $decoded['summary_narrative'] = MockBoardReadinessService::sanitizeToSecondPerson((string) $decoded['summary_narrative']);
+                }
+
+                if (! empty($decoded['study_steps']) && is_array($decoded['study_steps'])) {
+                    $decoded['study_steps'] = array_map(
+                        fn ($step) => MockBoardReadinessService::sanitizeToSecondPerson((string) $step),
+                        $decoded['study_steps']
+                    );
                 }
 
                 return $decoded;

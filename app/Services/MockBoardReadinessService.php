@@ -56,6 +56,19 @@ class MockBoardReadinessService
             && $existingReport->generated_at->gte($latestAttemptUpdatedAt);
 
         if (! $forceRegenerate && $isFresh) {
+            $plan = $existingReport->ai_action_plan;
+            if (! empty($plan['summary_narrative']) && (stripos($plan['summary_narrative'], 'the student') !== false || stripos($plan['summary_narrative'], 'the learner') !== false)) {
+                $cleanedPlan = $plan;
+                $cleanedPlan['summary_narrative'] = self::sanitizeToSecondPerson((string) $cleanedPlan['summary_narrative']);
+                if (! empty($cleanedPlan['study_steps']) && is_array($cleanedPlan['study_steps'])) {
+                    $cleanedPlan['study_steps'] = array_map(
+                        fn ($st) => self::sanitizeToSecondPerson((string) $st),
+                        $cleanedPlan['study_steps']
+                    );
+                }
+                $existingReport->update(['ai_action_plan' => $cleanedPlan]);
+            }
+
             return $existingReport;
         }
 
@@ -481,23 +494,25 @@ class MockBoardReadinessService
                 $frameworkContext = 'Philippine Licensure Examination for Teachers (PRC LET) administered by the PRC Board for Professional Teachers. Standards must adhere to Philippine Professional Standards for Teachers (PPST), Code of Ethics for Professional Teachers, General Education, Professional Education, and Specialization.';
             }
 
-            $systemPrompt = "You are a professional licensure board examination adviser and academic diagnostician for the {$frameworkContext}\n".
-                "Provide an actionable, realistic, high-yield study action plan based strictly on the student's mock board performance.\n".
-                "CRITICAL REQUIREMENTS:\n".
-                "- Only recommend priority domains that are within the student's tested subjects: [{$testedDomainsStr}] and where the student actually scored below 100%.\n".
-                "- NEVER invent or hallucinate foreign standards, non-existent subjects, or topics not related to the curriculum.\n".
-                "- Always reply with valid JSON containing keys: 'priority_domains' (array of strings), 'review_topics' (array of strings), 'study_steps' (array of 3 to 5 strings), 'summary_narrative' (string).";
+            $systemPrompt = "You are an expert licensure examination academic mentor and board reviewer for the {$frameworkContext}\n".
+                "You are speaking directly to a student who completed their mock board examination. Provide an actionable, realistic, high-yield diagnostic study action plan tailored directly to them.\n\n".
+                "STRICT RULES (CRITICALLY MANDATORY):\n".
+                "1. SECOND PERSON ONLY: Always address the student directly as \"You\" / \"Your\" (e.g., \"Given your readiness score of...\", \"Focus your review on...\", \"You need to strengthen your understanding of...\"). NEVER refer to the student in the third person (STRICTLY FORBIDDEN: \"the student\", \"the student's\", \"the learner\", \"the examinee\", \"they\", \"them\", \"their\", \"he\", \"she\", \"his\", \"her\").\n".
+                "2. ACTION-ORIENTED STUDY DIRECTIVES: Every study step in 'study_steps' must start directly with an active imperative verb (e.g., \"1. Review PSA 530...\", \"2. Practice solving...\", \"3. Analyze PFRS 10 criteria...\"). Never write passive third-person statements like \"The student should develop...\".\n".
+                "3. DOMAIN ACCURACY: Only recommend priority domains that are within the student's tested subjects: [{$testedDomainsStr}] and where they scored below 100%.\n".
+                "4. PHILIPPINE FRAMEWORK ONLY: NEVER invent or hallucinate foreign or US standards (no ASC, no US GAAP, no AICPA). All references must adhere to Philippine standards (PAS, PFRS, PSA, NIRC, RFBT).\n".
+                "5. VALID JSON: Always reply with valid JSON containing keys: 'priority_domains' (array of strings), 'review_topics' (array of strings), 'study_steps' (array of 3 to 5 strings), 'summary_narrative' (string).";
 
-            $userPrompt = "Student Performance Profile:\n".
-                "- Readiness Score: {$reportData['summary']['readiness_percentage']}%\n".
+            $userPrompt = "Your Mock Board Performance Profile:\n".
+                "- Your Readiness Score: {$reportData['summary']['readiness_percentage']}%\n".
                 "- Passing Threshold: {$reportData['summary']['passing_threshold']}%\n".
                 "- Likelihood Tier: {$reportData['summary']['tier_label']}\n".
-                "- Gap to Pass: {$reportData['summary']['gap_percentage']}% ({$reportData['summary']['gap_items']} items)\n".
-                "- Growth from Pre-Test: {$reportData['growth']['improvement_percentage']}%\n".
-                '- Tested Domains: '.$testedDomainsStr."\n".
-                '- Weakest Domains (< 100%): '.(empty($weakestDomains) ? 'None' : implode(', ', $weakestDomains))."\n".
-                '- Missed Concept Samples: '.(empty($missedStems) ? 'None' : implode('; ', array_slice($missedStems, 0, 3)))."\n\n".
-                'Produce the JSON action plan now:';
+                "- Gap to Pass Benchmark: {$reportData['summary']['gap_percentage']}% ({$reportData['summary']['gap_items']} items needed)\n".
+                "- Score Growth from Pre-Test: {$reportData['growth']['improvement_percentage']}%\n".
+                '- Your Tested Domains: '.$testedDomainsStr."\n".
+                '- Your Weakest Domains (< 100%): '.(empty($weakestDomains) ? 'None' : implode(', ', $weakestDomains))."\n".
+                '- Sample Missed Concepts: '.(empty($missedStems) ? 'None' : implode('; ', array_slice($missedStems, 0, 3)))."\n\n".
+                'Speak directly to the student in the second person ("You" / "Your") and generate the JSON action plan now:';
 
             $result = $this->ai->run($this->aiSettings->getModel(), [
                 'messages' => [
@@ -535,11 +550,21 @@ class MockBoardReadinessService
                     }
                 }
 
+                // Enforce second person ("You" / "Your") on narrative and study steps
+                $sanitizedSteps = array_map(
+                    fn ($st) => self::sanitizeToSecondPerson((string) $st),
+                    $steps
+                );
+
+                $sanitizedNarrative = ! empty($parsed['summary_narrative'])
+                    ? self::sanitizeToSecondPerson((string) $parsed['summary_narrative'])
+                    : $fallback['summary_narrative'];
+
                 return [
                     'priority_domains' => ! empty($filteredPriorityDomains) ? $filteredPriorityDomains : $fallback['priority_domains'],
                     'review_topics' => ! empty($parsed['review_topics']) ? $parsed['review_topics'] : $fallback['review_topics'],
-                    'study_steps' => (! empty($steps) && ! $hasUsHallucination) ? $steps : $fallback['study_steps'],
-                    'summary_narrative' => ! empty($parsed['summary_narrative']) ? $parsed['summary_narrative'] : $fallback['summary_narrative'],
+                    'study_steps' => (! empty($sanitizedSteps) && ! $hasUsHallucination) ? $sanitizedSteps : $fallback['study_steps'],
+                    'summary_narrative' => $sanitizedNarrative,
                 ];
             }
         } catch (\Throwable $e) {
@@ -549,6 +574,59 @@ class MockBoardReadinessService
         }
 
         return $fallback;
+    }
+
+    /**
+     * Normalize narrative or study step text into direct second-person address ("You" / "Your").
+     */
+    public static function sanitizeToSecondPerson(string $text): string
+    {
+        $replacements = [
+            // Possessives
+            '/\bthe student\'s\b/i' => 'your',
+            '/\bthe learner\'s\b/i' => 'your',
+            '/\bthe examinee\'s\b/i' => 'your',
+
+            // Verbs / Phrasings
+            '/\bthe student can\b/i' => 'you can',
+            '/\bthe student should\b/i' => 'you should',
+            '/\bthe student will\b/i' => 'you will',
+            '/\bthe student needs to\b/i' => 'you need to',
+            '/\bthe student must\b/i' => 'you must',
+            '/\bthe student is\b/i' => 'you are',
+            '/\bthe student has\b/i' => 'you have',
+            '/\bthe student was\b/i' => 'you were',
+            '/\bwhere the student\b/i' => 'where you',
+            '/\bthe student\b/i' => 'you',
+            '/\bthe learner\b/i' => 'you',
+            '/\bthe examinee\b/i' => 'you',
+
+            // Pronouns
+            '/\btheir chances\b/i' => 'your chances',
+            '/\btheir performance\b/i' => 'your performance',
+            '/\btheir readiness\b/i' => 'your readiness',
+            '/\btheir score\b/i' => 'your score',
+            '/\btheir gaps\b/i' => 'your gaps',
+            '/\btheir weak\b/i' => 'your weak',
+            '/\btheir understanding\b/i' => 'your understanding',
+            '/\btheir\b/i' => 'your',
+            '/\bthey can\b/i' => 'you can',
+            '/\bthey should\b/i' => 'you should',
+            '/\bthey will\b/i' => 'you will',
+            '/\bthey need to\b/i' => 'you need to',
+            '/\bthey are\b/i' => 'you are',
+            '/\bthey have\b/i' => 'you have',
+            '/\bthey\b/i' => 'you',
+        ];
+
+        $sanitized = preg_replace(array_keys($replacements), array_values($replacements), $text);
+
+        // Capitalize sentence start after punctuation
+        $sanitized = preg_replace_callback('/(^|[.!?]\s+)([a-z])/', function ($matches) {
+            return $matches[1].strtoupper($matches[2]);
+        }, (string) $sanitized);
+
+        return trim($sanitized);
     }
 
     /**
