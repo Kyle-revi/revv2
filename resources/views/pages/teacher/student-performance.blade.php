@@ -719,7 +719,7 @@
     <div class="sp-tab-nav">
         <button class="sp-tab-btn active" data-tab="quiz">Pre-Assessment</button>
         <button class="sp-tab-btn" data-tab="assessment">Assessments</button>
-        <button class="sp-tab-btn" data-tab="item-analysis"><i class="fas fa-microscope" style="color:#245E55; margin-right:4px;"></i> Psychometric Item Analysis</button>
+        <button class="sp-tab-btn" data-tab="item-analysis">Psychometric Item Analysis</button>
     </div>
 
     {{-- Pre-Assessment panel --}}
