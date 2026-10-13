@@ -313,12 +313,6 @@
         const weakHtml = formatAiInsightHtml(weak, 'No critical weak areas detected');
         const recHtml = formatAiInsightHtml(recommendation, 'Review the phase concepts before retaking.');
 
-        const refreshBtn = phaseId ? `
-            <button type="button" class="qz-btn qz-btn-outline" style="font-size:12px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#334155;font-weight:500;" onclick="refreshPhaseAiInsights('${phaseId}')">
-                <i class="fas fa-sync-alt"></i> Refresh Insight
-            </button>
-        ` : '';
-
         return `
             <div class="qz-ai-header">
                 <div class="qz-ai-header-left">
@@ -329,7 +323,6 @@
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    ${refreshBtn}
                     <span class="qz-ai-badge">Instant Analysis</span>
                 </div>
             </div>

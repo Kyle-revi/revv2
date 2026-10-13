@@ -1316,9 +1316,6 @@ function beginQuizUi() {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <button type="button" class="qz-btn qz-btn-outline" style="font-size:12px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#fff;border:1px solid #cbd5e1;color:#334155;font-weight:500;" onclick="refreshCurrentAiInsights(this)">
-                        <i class="fas fa-sync-alt"></i> Refresh Insight
-                    </button>
                     <span class="qz-ai-badge">Instant Analysis</span>
                 </div>
             </div>
