@@ -21,22 +21,35 @@ class ItemAnalysisService
         $module = Module::with(['quizQuestions'])->findOrFail($moduleId);
 
         // 1. Fetch completed attempts for students only
-        $attemptsQuery = QuizAttempt::query()
+        $baseAttemptsQuery = QuizAttempt::query()
             ->where('module_id', $moduleId)
-            ->where('status', 'completed')
+            ->where(function ($q) {
+                $q->where('status', 'completed')
+                    ->orWhereNotNull('completed_at')
+                    ->orWhereNotNull('score');
+            })
             ->whereHas('user', function ($q) {
                 $q->where('role', 'student');
             });
 
         if ($quizStage !== null && $quizStage !== '') {
-            $attemptsQuery->where('quiz_stage', $quizStage);
+            $allAttempts = (clone $baseAttemptsQuery)->where('quiz_stage', $quizStage)->get();
+            if ($allAttempts->isEmpty()) {
+                $allAttempts = (clone $baseAttemptsQuery)->where(function ($q) {
+                    $q->whereNull('quiz_stage')->orWhere('quiz_stage', '');
+                })->get();
+            }
+            if ($allAttempts->isEmpty()) {
+                $allAttempts = (clone $baseAttemptsQuery)->get();
+            }
         } else {
-            $attemptsQuery->where(function ($q) {
+            $allAttempts = (clone $baseAttemptsQuery)->where(function ($q) {
                 $q->whereNull('quiz_stage')->orWhere('quiz_stage', '');
-            });
+            })->get();
+            if ($allAttempts->isEmpty()) {
+                $allAttempts = (clone $baseAttemptsQuery)->get();
+            }
         }
-
-        $allAttempts = $attemptsQuery->get();
 
         // Deduplicate attempts per student according to configured policy
         $policy = config('item_analysis.attempt_policy', 'first');
@@ -48,14 +61,24 @@ class ItemAnalysisService
             ->where('module_id', $moduleId);
 
         if ($quizStage !== null && $quizStage !== '') {
-            $questionsQuery->where('quiz_stage', $quizStage);
+            $questions = (clone $questionsQuery)->where('quiz_stage', $quizStage)->orderBy('order')->orderBy('id')->get();
+            if ($questions->isEmpty()) {
+                $questions = (clone $questionsQuery)->where(function ($q) {
+                    $q->whereNull('quiz_stage')->orWhere('quiz_stage', '');
+                })->orderBy('order')->orderBy('id')->get();
+            }
+            if ($questions->isEmpty()) {
+                $questions = (clone $questionsQuery)->orderBy('order')->orderBy('id')->get();
+            }
         } else {
-            $questionsQuery->where(function ($q) {
+            $questions = (clone $questionsQuery)->where(function ($q) {
                 $q->whereNull('quiz_stage')->orWhere('quiz_stage', '');
-            });
+            })->orderBy('order')->orderBy('id')->get();
+            if ($questions->isEmpty()) {
+                $questions = (clone $questionsQuery)->orderBy('order')->orderBy('id')->get();
+            }
         }
 
-        $questions = $questionsQuery->orderBy('order')->orderBy('id')->get();
         $itemCount = $questions->count();
         $now = Carbon::now();
 
@@ -107,7 +130,8 @@ class ItemAnalysisService
                 $ans = $attAnswers->get($qId);
 
                 if ($ans) {
-                    $selectedOpt = $ans->selected_option !== null ? strtoupper(trim((string) $ans->selected_option)) : null;
+                    $rawSelected = $ans->selected_option ?? $ans->answer ?? null;
+                    $selectedOpt = $rawSelected !== null ? strtoupper(trim((string) $rawSelected)) : null;
                     $isCorrect = (bool) ($ans->is_correct ?? ($selectedOpt === $correctOpt));
                     $val = $isCorrect ? 1 : 0;
                     $matrixX[$attId][$qId] = $val;

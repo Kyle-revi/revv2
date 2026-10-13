@@ -10,8 +10,19 @@ class QuizAnswer extends Model
         'attempt_id',
         'question_id',
         'selected_option',
+        'answer',
         'is_correct',
     ];
+
+    public function setAnswerAttribute($value): void
+    {
+        $this->attributes['selected_option'] = $value;
+    }
+
+    public function getAnswerAttribute(): ?string
+    {
+        return $this->attributes['selected_option'] ?? null;
+    }
 
     protected $casts = [
         'is_correct' => 'boolean',

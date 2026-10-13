@@ -719,6 +719,7 @@
     <div class="sp-tab-nav">
         <button class="sp-tab-btn active" data-tab="quiz">Pre-Assessment</button>
         <button class="sp-tab-btn" data-tab="assessment">Assessments</button>
+        <button class="sp-tab-btn" data-tab="item-analysis"><i class="fas fa-microscope" style="color:#245E55; margin-right:4px;"></i> Psychometric Item Analysis</button>
     </div>
 
     {{-- Pre-Assessment panel --}}
@@ -737,11 +738,9 @@
                         </option>
                     @endforeach
                 </select>
-                @if(isset($selectedQuizModuleId) && $selectedQuizModuleId !== 'all')
-                    <a href="{{ route('modules.item-analysis', $selectedQuizModuleId) }}" class="sp-refresh-btn" style="text-decoration:none;" title="Psychometric Item Analysis">
-                        <i class="fas fa-microscope" style="color:#245E55;"></i> Item Analysis
-                    </a>
-                @endif
+                <a id="quizItemAnalysisLink" href="#" target="_blank" class="sp-refresh-btn" style="display:none; text-decoration:none; gap:6px; background:#245E55; color:#fff; border-color:#245E55;" title="Open Psychometric Item Analysis for this module">
+                    <i class="fas fa-microscope"></i> Item Analysis
+                </a>
             </div>
         </div>
 
@@ -853,11 +852,9 @@
                     </option>
                 @endforeach
             </select>
-            @if(isset($selectedAssessModuleId) && $selectedAssessModuleId !== 'all')
-                <a href="{{ route('modules.item-analysis', $selectedAssessModuleId) }}" class="sp-refresh-btn" style="text-decoration:none;" title="Psychometric Item Analysis">
-                    <i class="fas fa-microscope" style="color:#245E55;"></i> Item Analysis
-                </a>
-            @endif
+            <a id="assessItemAnalysisLink" href="#" target="_blank" class="sp-refresh-btn" style="display:none; text-decoration:none; gap:6px; background:#245E55; color:#fff; border-color:#245E55;" title="Open Psychometric Item Analysis for this assessment">
+                <i class="fas fa-microscope"></i> Item Analysis
+            </a>
         </div>
 
         {{-- Assessment-Level Base Attempt Settings (Per Test) --}}
@@ -968,6 +965,39 @@
         </div>
     </div>
 </div>{{-- /tab-assessment --}}
+
+    {{-- Psychometric Item Analysis Panel --}}
+    <div class="sp-tab-panel" id="tab-item-analysis">
+        <p class="sp-sub" id="spIaSubtitle">{{ $class->name ?? 'Class' }} - Psychometric analysis: Item Difficulty (p), Discrimination (D), KR-20 reliability, and distractor efficiency.</p>
+
+        @php
+            $allClassModules = collect($preAssessmentModules)->merge($formalAssessmentModules)->unique('id');
+        @endphp
+
+        <div class="sp-filter-bar">
+            <div class="sp-filter-group" style="flex:1;min-width:280px;">
+                <label for="iaModuleSelect" class="sp-filter-label"><i class="fas fa-layer-group"></i> Select Quiz / Assessment:</label>
+                <select id="iaModuleSelect" class="sp-filter-select" onchange="onIaModuleSelect(this.value)" style="min-width:320px;">
+                    @forelse($allClassModules as $m)
+                        <option value="{{ $m->id }}">
+                            {{ $m->title }} ({{ $m->is_formal_assessment ? 'Formal Assessment' : ($m->quiz_stage === 'post_test' ? 'Post-Test' : 'Pre-Assessment') }})
+                        </option>
+                    @empty
+                        <option value="">No Quizzes or Assessments in this class</option>
+                    @endforelse
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <a id="iaOpenFullPageBtn" href="#" target="_blank" class="sp-refresh-btn" style="text-decoration:none;gap:6px;background:#245E55;color:#fff;border-color:#245E55;" title="Open in dedicated page">
+                    <i class="fas fa-external-link-alt"></i> Open Full Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div style="width:100%;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;background:#fff;margin-top:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <iframe id="iaIframe" src="" style="width:100%;height:950px;border:none;display:block;" loading="lazy"></iframe>
+        </div>
+    </div>{{-- /tab-item-analysis --}}
 
 </div>
 
@@ -1084,13 +1114,48 @@ function populateModuleSelect(selectId, modules, defaultLabel) {
 
 async function onQuizModuleSelect(val) {
     currentQuizModuleId = val || 'all';
+    updateQuizItemAnalysisLink();
     await fetchAndUpdatePerformance('quiz');
+}
+
+function updateQuizItemAnalysisLink() {
+    var link = document.getElementById('quizItemAnalysisLink');
+    if (link) {
+        if (currentQuizModuleId && currentQuizModuleId !== 'all') {
+            link.href = '/modules/' + currentQuizModuleId + '/item-analysis';
+            link.style.display = 'inline-flex';
+        } else {
+            link.style.display = 'none';
+        }
+    }
 }
 
 async function onAssessModuleSelect(val) {
     currentAssessModuleId = val || 'all';
+    updateAssessItemAnalysisLink();
     updateAssessBaseLimitDisplay();
     await fetchAndUpdatePerformance('assessment');
+}
+
+function updateAssessItemAnalysisLink() {
+    var link = document.getElementById('assessItemAnalysisLink');
+    if (link) {
+        if (currentAssessModuleId && currentAssessModuleId !== 'all') {
+            link.href = '/modules/' + currentAssessModuleId + '/item-analysis';
+            link.style.display = 'inline-flex';
+        } else {
+            link.style.display = 'none';
+        }
+    }
+}
+
+function onIaModuleSelect(val) {
+    if (!val) return;
+    var iframe = document.getElementById('iaIframe');
+    var fullBtn = document.getElementById('iaOpenFullPageBtn');
+    var url = '/modules/' + val + '/item-analysis';
+    if (iframe) iframe.src = url;
+    if (fullBtn) fullBtn.href = url;
 }
 
 async function fetchAndUpdatePerformance(targetTab) {
@@ -1828,15 +1893,25 @@ document.querySelectorAll('.sp-tab-btn').forEach(function (btn) {
             if (currentQuestionStats.length) {
                 buildQuestionChart(currentQuestionStats);
             }
-        } else {
+        } else if (tab === 'assessment') {
             renderAssessmentPassFailCard();
             updateAssessBaseLimitDisplay();
             if (currentAssessQuestionStats.length) {
                 buildAssessmentQuestionChart(currentAssessQuestionStats);
             }
+        } else if (tab === 'item-analysis') {
+            var iaSelect = document.getElementById('iaModuleSelect');
+            var iframe = document.getElementById('iaIframe');
+            if (iaSelect && iaSelect.value && (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href || iframe.src.endsWith('/'))) {
+                onIaModuleSelect(iaSelect.value);
+            }
         }
     });
 });
+
+// Initialize on page load
+updateQuizItemAnalysisLink();
+updateAssessItemAnalysisLink();
 
 /* Class tabs */
 document.querySelectorAll('.js-class-tab').forEach(function (tab) {

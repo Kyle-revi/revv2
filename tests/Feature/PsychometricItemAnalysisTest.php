@@ -584,4 +584,65 @@ class PsychometricItemAnalysisTest extends TestCase
         $this->assertNull($item1Stats['point_biserial']);
         $this->assertContains('all_correct', $item1Stats['flags']);
     }
+
+    public function test_unassigned_questions_fallback_when_module_stage_is_set(): void
+    {
+        $teacher = $this->createTeacher();
+        $class = ClassModel::query()->create([
+            'name' => 'Fallback Class',
+            'code' => 'FBC101',
+            'school_year' => 2026,
+            'created_by' => $teacher->id,
+        ]);
+
+        // Module has quiz_stage = 'post_test'
+        $module = Module::query()->create([
+            'class_id' => $class->id,
+            'title' => 'Post-Test: Final Module Evaluation',
+            'is_quiz' => true,
+            'quiz_stage' => 'post_test',
+        ]);
+
+        // Questions have quiz_stage = null (e.g. from Test Bank or manual entry)
+        $q1 = QuizQuestion::query()->create([
+            'module_id' => $module->id,
+            'quiz_stage' => null,
+            'question_text' => 'Unassigned question stem',
+            'options' => json_encode(['A' => 'Right', 'B' => 'Wrong']),
+            'correct_option' => 'A',
+            'difficulty' => 'Average',
+            'order' => 1,
+            'points' => 1,
+        ]);
+
+        for ($i = 1; $i <= 10; $i++) {
+            $student = $this->createStudent();
+            $class->students()->attach($student->id);
+
+            $attempt = QuizAttempt::query()->create([
+                'user_id' => $student->id,
+                'module_id' => $module->id,
+                'quiz_stage' => 'post_test',
+                'score' => 1,
+                'total' => 1,
+                'percentage' => 100,
+                'passed' => true,
+                'status' => 'completed',
+            ]);
+
+            QuizAnswer::query()->create([
+                'attempt_id' => $attempt->id,
+                'question_id' => $q1->id,
+                'selected_option' => 'A',
+                'is_correct' => true,
+            ]);
+        }
+
+        // Running analysis with 'post_test' stage must NOT return 0 items
+        $result = app(ItemAnalysisService::class)->analyzeQuiz($module->id, 'post_test');
+
+        $this->assertEquals(1, $result['test']['n_items']);
+        $this->assertCount(1, $result['items']);
+        $this->assertEquals($q1->id, $result['items'][0]['question_id']);
+    }
 }

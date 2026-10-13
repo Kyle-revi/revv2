@@ -16,6 +16,19 @@
 
 @section('content')
 <style>
+    /* Embed mode when inside iframe */
+    body.is-embedded .rv-sidebar,
+    body.is-embedded .rv-topbar {
+        display: none !important;
+    }
+    body.is-embedded .rv-main {
+        margin-left: 0 !important;
+        min-height: auto !important;
+    }
+    body.is-embedded .rv-content {
+        padding: 16px !important;
+    }
+
     .ia-wrapper {
         display: flex;
         flex-direction: column;
@@ -861,6 +874,10 @@
 </div>
 
 <script>
+    if (window.self !== window.top) {
+        document.body.classList.add('is-embedded');
+    }
+
     // Data store passed from controller
     const allItems = @json($itemStats ?? []);
     const testLevelStats = @json($testStats ?? []);

@@ -825,8 +825,20 @@ class PerformanceController extends Controller
             }
         }
 
-        $stage = $request->query('stage', $module->quiz_stage);
-        $stage = ($stage !== '' && $stage !== null) ? $stage : null;
+        $requestedStage = $request->query('stage');
+        if ($requestedStage !== null && $requestedStage !== '') {
+            $stage = $requestedStage;
+        } else {
+            if (! empty($module->quiz_stage) && $module->quizQuestions()->where('quiz_stage', $module->quiz_stage)->exists()) {
+                $stage = $module->quiz_stage;
+            } elseif ($module->preTestQuestions()->exists()) {
+                $stage = 'pre_test';
+            } elseif ($module->postTestQuestions()->exists()) {
+                $stage = 'post_test';
+            } else {
+                $stage = null;
+            }
+        }
 
         $service = app(ItemAnalysisService::class);
         $analysis = $service->analyzeQuiz($module->id, $stage, true);
@@ -865,8 +877,20 @@ class PerformanceController extends Controller
             }
         }
 
-        $stage = $request->input('stage', $module->quiz_stage);
-        $stage = ($stage !== '' && $stage !== null) ? $stage : null;
+        $requestedStage = $request->input('stage');
+        if ($requestedStage !== null && $requestedStage !== '') {
+            $stage = $requestedStage;
+        } else {
+            if (! empty($module->quiz_stage) && $module->quizQuestions()->where('quiz_stage', $module->quiz_stage)->exists()) {
+                $stage = $module->quiz_stage;
+            } elseif ($module->preTestQuestions()->exists()) {
+                $stage = 'pre_test';
+            } elseif ($module->postTestQuestions()->exists()) {
+                $stage = 'post_test';
+            } else {
+                $stage = null;
+            }
+        }
 
         $service = app(ItemAnalysisService::class);
         $analysis = $service->analyzeQuiz($module->id, $stage, true);
