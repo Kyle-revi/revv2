@@ -699,6 +699,14 @@
 
     var resumeDeadlineMs        = @json($resume_deadline_ms ?? null);
 
+    var isPreTest               = {{ (
+        (($isMockBoard ?? false) && isset($mockBoardPhase) && $mockBoardPhase->phase_type === 'pre_test') ||
+        (($phase ?? '') === 'pre_test') ||
+        (($module->quiz_stage ?? '') === 'pre_test') ||
+        (isset($stage) && $stage === 'pre_test') ||
+        (str_contains(strtolower($module->title ?? ''), 'pre-test') || str_contains(strtolower($module->title ?? ''), 'pre test'))
+    ) ? 'true' : 'false' }};
+
     var currentAttemptId        = null;
 
     var resumeCountdownInterval = null;
@@ -1614,6 +1622,16 @@ function beginQuizUi() {
             return;
         }
 
+        if (typeof isPreTest !== 'undefined' && isPreTest) {
+            var lockedHtml = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
+                '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
+                '<span>Item analysis is disabled for Pre-Test (Diagnostic Assessment). Detailed item breakdown and answer explanations are unlocked on Post-Test.</span>' +
+                '</div>';
+            cachedHistoryDetailHtml[snapshotId] = lockedHtml;
+            detailEl.innerHTML = lockedHtml;
+            return;
+        }
+
         detailEl.innerHTML = '<p class="qz-history-empty"><i class="fas fa-spinner fa-spin"></i> Loading details...</p>';
 
         fetch('/quiz/attempts/' + snapshotId + '/detail', {
@@ -1621,6 +1639,16 @@ function beginQuizUi() {
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
+            if (res.disabled || res.is_pre_test || res.quiz_stage === 'pre_test' || res.phase_type === 'pre_test') {
+                var lockedMsg = res.message || 'Item analysis is disabled for Pre-Test (Diagnostic Assessment). Detailed item breakdown and answer explanations are unlocked on Post-Test.';
+                var html = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
+                    '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
+                    '<span>' + escHtml(lockedMsg) + '</span>' +
+                    '</div>';
+                cachedHistoryDetailHtml[snapshotId] = html;
+                detailEl.innerHTML = html;
+                return;
+            }
             if (res.success && res.questions && res.questions.length) {
                 var html = res.questions.map(function (q, i) {
                     var cls = q.is_correct ? 'correct' : 'incorrect';
