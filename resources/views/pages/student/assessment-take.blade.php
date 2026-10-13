@@ -699,22 +699,6 @@
 
     var resumeDeadlineMs        = @json($resume_deadline_ms ?? null);
 
-    var isPreTest               = {{ (
-        (($isMockBoard ?? false) && isset($mockBoardPhase) && $mockBoardPhase->phase_type === 'pre_test') ||
-        (($phase ?? '') === 'pre_test') ||
-        (($module->quiz_stage ?? '') === 'pre_test') ||
-        (isset($stage) && $stage === 'pre_test') ||
-        (str_contains(strtolower($module->title ?? ''), 'pre-test') || str_contains(strtolower($module->title ?? ''), 'pre test'))
-    ) ? 'true' : 'false' }};
-
-    var isPostTest              = {{ (
-        (($isMockBoard ?? false) && isset($mockBoardPhase) && in_array($mockBoardPhase->phase_type, ['post_test', 'pre_boards'])) ||
-        in_array(($phase ?? ''), ['post_test', 'pre_boards']) ||
-        in_array(($module->quiz_stage ?? ''), ['post_test', 'pre_boards']) ||
-        (isset($stage) && in_array($stage, ['post_test', 'pre_boards'])) ||
-        (str_contains(strtolower($module->title ?? ''), 'post-test') || str_contains(strtolower($module->title ?? ''), 'post test'))
-    ) ? 'true' : 'false' }};
-
     var currentAttemptId        = null;
 
     var resumeCountdownInterval = null;
@@ -1443,12 +1427,13 @@ function beginQuizUi() {
 
             '</div>' +
 
-            ((typeof isPreTest !== 'undefined' && isPreTest) || (typeof isPostTest !== 'undefined' && isPostTest)
-                ? ''
-                : ('<div class="qz-history-card" id="historyBox">' +
-                   '<p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>' +
-                   '<p class="qz-history-empty">Loading history...</p>' +
-                   '</div>')) +
+            '<div class="qz-history-card" id="historyBox">' +
+
+            '<p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>' +
+
+            '<p class="qz-history-empty">Loading history...</p>' +
+
+            '</div>' +
 
             '<div class="qz-result-btns">' +
 
@@ -1519,11 +1504,6 @@ function beginQuizUi() {
 
 
     function loadAttemptHistory() {
-        if ((typeof isPreTest !== 'undefined' && isPreTest) || (typeof isPostTest !== 'undefined' && isPostTest)) {
-            var box = document.getElementById('historyBox');
-            if (box) box.style.display = 'none';
-            return;
-        }
 
         fetch('/modules/' + moduleId + '/quiz/history', {
 
@@ -1634,17 +1614,6 @@ function beginQuizUi() {
             return;
         }
 
-        if ((typeof isPreTest !== 'undefined' && isPreTest) || (typeof isPostTest !== 'undefined' && isPostTest)) {
-            var stageLabel = (typeof isPreTest !== 'undefined' && isPreTest) ? 'Pre-Test (Diagnostic Assessment)' : 'Post-Test';
-            var lockedHtml = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
-                '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
-                '<span>Item analysis is disabled for ' + stageLabel + '. Detailed question breakdowns and answers are restricted.</span>' +
-                '</div>';
-            cachedHistoryDetailHtml[snapshotId] = lockedHtml;
-            detailEl.innerHTML = lockedHtml;
-            return;
-        }
-
         detailEl.innerHTML = '<p class="qz-history-empty"><i class="fas fa-spinner fa-spin"></i> Loading details...</p>';
 
         fetch('/quiz/attempts/' + snapshotId + '/detail', {
@@ -1652,17 +1621,6 @@ function beginQuizUi() {
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
-            if (res.disabled || res.is_pre_test || res.is_post_test || res.quiz_stage === 'pre_test' || res.quiz_stage === 'post_test' || res.phase_type === 'pre_test' || res.phase_type === 'post_test' || res.phase_type === 'pre_boards') {
-                var stageLabel = (res.is_pre_test || res.quiz_stage === 'pre_test' || res.phase_type === 'pre_test') ? 'Pre-Test (Diagnostic Assessment)' : 'Post-Test';
-                var lockedMsg = res.message || ('Item analysis is disabled for ' + stageLabel + '. Detailed question breakdowns and answers are restricted.');
-                var html = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
-                    '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
-                    '<span>' + escHtml(lockedMsg) + '</span>' +
-                    '</div>';
-                cachedHistoryDetailHtml[snapshotId] = html;
-                detailEl.innerHTML = html;
-                return;
-            }
             if (res.success && res.questions && res.questions.length) {
                 var html = res.questions.map(function (q, i) {
                     var cls = q.is_correct ? 'correct' : 'incorrect';
