@@ -994,6 +994,7 @@ class QuizController extends Controller
         }
 
         $isPreTest = ($snapshot->quiz_stage === 'pre_test' || $snapshot->phase_type === 'pre_test');
+        $isPostTest = in_array($snapshot->quiz_stage, ['post_test', 'pre_boards']) || in_array($snapshot->phase_type, ['post_test', 'pre_boards']);
 
         return response()->json([
             'success' => true,
@@ -1005,6 +1006,7 @@ class QuizController extends Controller
             'completed_at' => $snapshot->completed_at,
             'quiz_stage' => $snapshot->quiz_stage,
             'is_pre_test' => $isPreTest,
+            'is_post_test' => $isPostTest,
             'questions' => $questions,
         ]);
     }

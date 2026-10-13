@@ -707,6 +707,14 @@
         (str_contains(strtolower($module->title ?? ''), 'pre-test') || str_contains(strtolower($module->title ?? ''), 'pre test'))
     ) ? 'true' : 'false' }};
 
+    var isPostTest              = {{ (
+        (($isMockBoard ?? false) && isset($mockBoardPhase) && in_array($mockBoardPhase->phase_type, ['post_test', 'pre_boards'])) ||
+        in_array(($phase ?? ''), ['post_test', 'pre_boards']) ||
+        in_array(($module->quiz_stage ?? ''), ['post_test', 'pre_boards']) ||
+        (isset($stage) && in_array($stage, ['post_test', 'pre_boards'])) ||
+        (str_contains(strtolower($module->title ?? ''), 'post-test') || str_contains(strtolower($module->title ?? ''), 'post test'))
+    ) ? 'true' : 'false' }};
+
     var currentAttemptId        = null;
 
     var resumeCountdownInterval = null;
@@ -1622,10 +1630,11 @@ function beginQuizUi() {
             return;
         }
 
-        if (typeof isPreTest !== 'undefined' && isPreTest) {
+        if ((typeof isPreTest !== 'undefined' && isPreTest) || (typeof isPostTest !== 'undefined' && isPostTest)) {
+            var stageLabel = (typeof isPreTest !== 'undefined' && isPreTest) ? 'Pre-Test (Diagnostic Assessment)' : 'Post-Test';
             var lockedHtml = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
                 '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
-                '<span>Item analysis is disabled for Pre-Test (Diagnostic Assessment). Detailed item breakdown and answer explanations are unlocked on Post-Test.</span>' +
+                '<span>Item analysis is disabled for ' + stageLabel + '. Detailed question breakdowns and answers are restricted.</span>' +
                 '</div>';
             cachedHistoryDetailHtml[snapshotId] = lockedHtml;
             detailEl.innerHTML = lockedHtml;
@@ -1639,8 +1648,9 @@ function beginQuizUi() {
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
-            if (res.disabled || res.is_pre_test || res.quiz_stage === 'pre_test' || res.phase_type === 'pre_test') {
-                var lockedMsg = res.message || 'Item analysis is disabled for Pre-Test (Diagnostic Assessment). Detailed item breakdown and answer explanations are unlocked on Post-Test.';
+            if (res.disabled || res.is_pre_test || res.is_post_test || res.quiz_stage === 'pre_test' || res.quiz_stage === 'post_test' || res.phase_type === 'pre_test' || res.phase_type === 'post_test' || res.phase_type === 'pre_boards') {
+                var stageLabel = (res.is_pre_test || res.quiz_stage === 'pre_test' || res.phase_type === 'pre_test') ? 'Pre-Test (Diagnostic Assessment)' : 'Post-Test';
+                var lockedMsg = res.message || ('Item analysis is disabled for ' + stageLabel + '. Detailed question breakdowns and answers are restricted.');
                 var html = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
                     '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
                     '<span>' + escHtml(lockedMsg) + '</span>' +

@@ -482,24 +482,11 @@
             var dateStr = a.completed_at ? new Date(a.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
             var itemId = phaseId + '_' + a.attempt_number;
             var isPreTestAttempt = !!(a.is_pre_test || (typeof phaseTypes !== 'undefined' && phaseTypes[phaseId] === 'pre_test'));
-            var qHtml = '';
-            if (isPreTestAttempt) {
-                qHtml = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
-                    '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
-                    '<span>Item analysis is disabled for Pre-Test (Diagnostic Assessment). Detailed item breakdown and answer explanations are unlocked on Post-Test.</span>' +
-                    '</div>';
-            } else {
-                qHtml = (a.questions || []).map(function (q, i) {
-                    var cls = q.is_correct ? 'correct' : 'incorrect';
-                    var yourAns = q.selected_option ? q.selected_option + (q.options && q.options[q.selected_option] ? ' - ' + q.options[q.selected_option] : '') : 'No answer';
-                    var correctAns = q.correct_option ? q.correct_option + (q.options && q.options[q.correct_option] ? ' - ' + q.options[q.correct_option] : '') : '-';
-                    return '<div class="qz-history-q ' + cls + '">' +
-                        '<p class="qz-history-q-text">' + (i + 1) + '. ' + escHtml(q.question_text || '') + '</p>' +
-                        '<p class="qz-history-q-ans"><i class="fas fa-' + (q.is_correct ? 'check' : 'times') + '"></i> Your answer: ' + escHtml(yourAns) + '</p>' +
-                        (!q.is_correct ? '<p class="qz-history-q-ans"><i class="fas fa-check"></i> Correct answer: ' + escHtml(correctAns) + '</p>' : '') +
-                        '</div>';
-                }).join('');
-            }
+            var stageLabel = isPreTestAttempt ? 'Pre-Test (Diagnostic Assessment)' : 'Post-Test';
+            var qHtml = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
+                '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
+                '<span>Item analysis is disabled for ' + stageLabel + '. Please refer to your AI Performance Diagnostic and Readiness Report for comprehensive competency feedback.</span>' +
+                '</div>';
             return '<div class="qz-history-item" id="historyItem_' + itemId + '">' +
                 '<div class="qz-history-row" onclick="toggleHistoryItem(\'' + itemId + '\')">' +
                 '<div class="qz-history-left"><span class="qz-history-num">Attempt ' + a.attempt_number + '</span>' +
