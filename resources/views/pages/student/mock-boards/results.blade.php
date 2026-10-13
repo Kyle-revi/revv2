@@ -191,7 +191,7 @@
                                 </div>
                             </div>
 
-                            <div class="qz-history-card" id="historyBox_{{ $phaseId }}">
+                            <div class="qz-history-card" id="historyBox_{{ $phaseId }}" style="display:none !important;">
                                 <p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>
                                 <p class="qz-history-empty">Loading history...</p>
                             </div>
@@ -471,31 +471,8 @@
     function renderHistory(phaseId) {
         var box = document.getElementById('historyBox_' + phaseId);
         if (!box) return;
-        var attempts = historyDataByPhase[phaseId] || [];
-        if (!attempts.length) {
-            box.innerHTML = '<p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p><p class="qz-history-empty">No previous attempts recorded yet.</p>';
-            return;
-        }
-        var rows = attempts.map(function (a) {
-            var pct = Math.round(a.percentage);
-            var scoreClass = a.passed ? 'pass' : 'fail';
-            var dateStr = a.completed_at ? new Date(a.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-            var itemId = phaseId + '_' + a.attempt_number;
-            var isPreTestAttempt = !!(a.is_pre_test || (typeof phaseTypes !== 'undefined' && phaseTypes[phaseId] === 'pre_test'));
-            var stageLabel = isPreTestAttempt ? 'Pre-Test (Diagnostic Assessment)' : 'Post-Test';
-            var qHtml = '<div style="padding:14px 16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;color:#64748b;font-size:13px;display:flex;align-items:center;gap:10px;">' +
-                '<i class="fas fa-lock" style="color:#94a3b8;font-size:16px;flex-shrink:0;"></i>' +
-                '<span>Item analysis is disabled for ' + stageLabel + '. Please refer to your AI Performance Diagnostic and Readiness Report for comprehensive competency feedback.</span>' +
-                '</div>';
-            return '<div class="qz-history-item" id="historyItem_' + itemId + '">' +
-                '<div class="qz-history-row" onclick="toggleHistoryItem(\'' + itemId + '\')">' +
-                '<div class="qz-history-left"><span class="qz-history-num">Attempt ' + a.attempt_number + '</span>' +
-                '<span class="qz-history-score ' + scoreClass + '">' + pct + '% &bull; ' + a.score + '/' + a.total + '</span></div>' +
-                '<div style="display:flex;align-items:center;gap:8px;"><span class="qz-history-date">' + dateStr + '</span>' +
-                '<i class="fas fa-chevron-down qz-history-chevron"></i></div></div>' +
-                '<div class="qz-history-detail" id="historyDetail_' + itemId + '">' + qHtml + '</div></div>';
-        }).join('');
-        box.innerHTML = '<p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>' + rows;
+        box.style.display = 'none';
+        box.innerHTML = '';
     }
 
     function toggleHistoryItem(itemId) {
@@ -729,7 +706,7 @@
 
     .qz-history-card {
         background: #fff; border: 1px solid #ebebeb; border-radius: 11px;
-        padding: 16px 18px; text-align: left;
+        padding: 16px 18px; text-align: left; display: none !important;
     }
     .qz-history-title { font-size: 14px; font-weight: 500; color: #111; margin: 0 0 12px; display: flex; align-items: center; gap: 6px; }
     .qz-history-item { border: 1px solid #ebebeb; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }

@@ -2328,10 +2328,12 @@
                 <div class="qz-ai-box" id="aiBox">
                     ${aiHtml}
                 </div>
+                ${(currentQuizStage === 'pre_test' || currentQuizStage === 'post_test') ? '' : `
                 <div class="qz-history-card" id="historyBox">
                     <p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>
                     <p class="qz-history-empty">Loading history...</p>
                 </div>
+                `}
                 <div class="qz-result-btns" id="qzResultBtns">
                     <button class="qz-btn qz-btn-outline" onclick="quizBackHandler()"><i class="fas fa-arrow-left"></i> Back</button>
                     ${retakeBtnHtml}
@@ -2343,6 +2345,12 @@
     }
 
     function loadAttemptHistory(targetModuleId, stage = null) {
+        if (stage === 'pre_test' || stage === 'post_test') {
+            var box = document.getElementById('historyBox');
+            if (box) box.style.display = 'none';
+            return;
+        }
+
         let url = `/modules/${targetModuleId}/quiz/history`;
         if (stage) {
             url += `?quiz_stage=${stage}`;
