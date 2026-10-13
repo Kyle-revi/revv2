@@ -219,11 +219,6 @@ class PsychologyPresentationSeeder extends Seeder
      */
     private function ensureQuestions(Module $module, array $questionsTemplate): void
     {
-        $currentCount = $module->quizQuestions()->count();
-        if ($currentCount >= 10) {
-            return;
-        }
-
         foreach ($questionsTemplate as $qData) {
             QuizQuestion::updateOrCreate(
                 [
@@ -368,7 +363,7 @@ class PsychologyPresentationSeeder extends Seeder
                 ],
                 'correct_option' => 'C',
                 'points' => 1,
-                'difficulty' => 'Normal',
+                'difficulty' => 'Easy',
                 'explanation' => 'Abnormal psychology is an empirical science that relies on systematic research, clinical observation, and the scientific method, not philosophical reinterpretations.',
             ],
             [
@@ -382,7 +377,7 @@ class PsychologyPresentationSeeder extends Seeder
                 ],
                 'correct_option' => 'C',
                 'points' => 1,
-                'difficulty' => 'Normal',
+                'difficulty' => 'Easy',
                 'explanation' => 'The statistical criterion defines abnormality as behaviors that are statistically infrequent or rare, not frequent.',
             ],
             [
@@ -410,7 +405,7 @@ class PsychologyPresentationSeeder extends Seeder
                 ],
                 'correct_option' => 'D',
                 'points' => 1,
-                'difficulty' => 'Normal',
+                'difficulty' => 'Hard',
                 'explanation' => 'Pervasive avoidance of social activities due to feelings of inadequacy and hypersensitivity to negative evaluation persisting long-term.',
             ],
             [
@@ -424,7 +419,7 @@ class PsychologyPresentationSeeder extends Seeder
                 ],
                 'correct_option' => 'D',
                 'points' => 1,
-                'difficulty' => 'Normal',
+                'difficulty' => 'Hard',
                 'explanation' => 'Generalized Anxiety Disorder (GAD) is characterized by persistent, excessive, and uncontrollable worry across multiple life domains lasting at least 6 months.',
             ],
             [
@@ -452,7 +447,7 @@ class PsychologyPresentationSeeder extends Seeder
                 ],
                 'correct_option' => 'C',
                 'points' => 1,
-                'difficulty' => 'Normal',
+                'difficulty' => 'Easy',
                 'explanation' => 'Inappropriate affect occurs when emotional expressions are incongruent or contradictory to the situational context or thought content.',
             ],
             [
@@ -480,7 +475,7 @@ class PsychologyPresentationSeeder extends Seeder
                 ],
                 'correct_option' => 'D',
                 'points' => 1,
-                'difficulty' => 'Normal',
+                'difficulty' => 'Hard',
                 'explanation' => 'Developmental fixation of the ego is a psychodynamic concept, not an established biological gestational risk factor.',
             ],
             [
@@ -494,7 +489,7 @@ class PsychologyPresentationSeeder extends Seeder
                 ],
                 'correct_option' => 'B',
                 'points' => 1,
-                'difficulty' => 'Normal',
+                'difficulty' => 'Easy',
                 'explanation' => 'Dysfunction (maladaptiveness) refers to significant impairment in daily adaptive functioning, work, school, or interpersonal relationships.',
             ],
         ];

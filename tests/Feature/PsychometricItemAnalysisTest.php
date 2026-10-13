@@ -645,4 +645,91 @@ class PsychometricItemAnalysisTest extends TestCase
         $this->assertCount(1, $result['items']);
         $this->assertEquals($q1->id, $result['items'][0]['question_id']);
     }
+
+    public function test_ai_difficulty_label_normalization_and_calibration(): void
+    {
+        $service = app(ItemAnalysisService::class);
+
+        // Verify normalization helper
+        $this->assertEquals('easy', $service->normalizeDifficultyLabel('Easy'));
+        $this->assertEquals('easy', $service->normalizeDifficultyLabel('Very Easy'));
+        $this->assertEquals('average', $service->normalizeDifficultyLabel('Normal'));
+        $this->assertEquals('average', $service->normalizeDifficultyLabel('Average'));
+        $this->assertEquals('difficult', $service->normalizeDifficultyLabel('Hard'));
+        $this->assertEquals('difficult', $service->normalizeDifficultyLabel('Difficult'));
+
+        $teacher = $this->createTeacher();
+        $class = ClassModel::query()->create([
+            'name' => 'Calibration Class',
+            'code' => 'CAL101',
+            'school_year' => 2026,
+            'created_by' => $teacher->id,
+        ]);
+
+        $module = Module::query()->create([
+            'class_id' => $class->id,
+            'title' => 'Calibration Module',
+            'is_quiz' => true,
+        ]);
+
+        // Q1: 'Normal' difficulty label, empirical p = 0.50 (Average) -> must match!
+        $q1 = QuizQuestion::query()->create([
+            'module_id' => $module->id,
+            'question_text' => 'Normal Question',
+            'options' => json_encode(['A' => 'Correct', 'B' => 'Wrong']),
+            'correct_option' => 'A',
+            'difficulty' => 'Normal',
+            'order' => 1,
+            'points' => 1,
+        ]);
+
+        // Q2: 'Hard' difficulty label, empirical p = 0.20 (Difficult) -> must match!
+        $q2 = QuizQuestion::query()->create([
+            'module_id' => $module->id,
+            'question_text' => 'Hard Question',
+            'options' => json_encode(['A' => 'Correct', 'B' => 'Wrong']),
+            'correct_option' => 'A',
+            'difficulty' => 'Hard',
+            'order' => 2,
+            'points' => 1,
+        ]);
+
+        // 10 students: 5 pass Q1 (p=0.50), 2 pass Q2 (p=0.20)
+        for ($i = 1; $i <= 10; $i++) {
+            $student = $this->createStudent();
+            $class->students()->attach($student->id);
+
+            $attempt = QuizAttempt::query()->create([
+                'user_id' => $student->id,
+                'module_id' => $module->id,
+                'score' => 1,
+                'total' => 2,
+                'percentage' => 50,
+                'passed' => false,
+                'status' => 'completed',
+            ]);
+
+            QuizAnswer::query()->create([
+                'attempt_id' => $attempt->id,
+                'question_id' => $q1->id,
+                'selected_option' => ($i <= 5) ? 'A' : 'B',
+                'is_correct' => ($i <= 5),
+            ]);
+
+            QuizAnswer::query()->create([
+                'attempt_id' => $attempt->id,
+                'question_id' => $q2->id,
+                'selected_option' => ($i <= 2) ? 'A' : 'B',
+                'is_correct' => ($i <= 2),
+            ]);
+        }
+
+        $result = $service->analyzeQuiz($module->id, null);
+
+        // Both items should match their empirical bands
+        $items = collect($result['items'])->keyBy('question_id');
+        $this->assertTrue($items->get($q1->id)['label_matches']);
+        $this->assertTrue($items->get($q2->id)['label_matches']);
+        $this->assertEquals(100.0, (float) $result['test']['label_accuracy']);
+    }
 }

@@ -217,7 +217,9 @@ class ItemAnalysisService
             $labelMatches = null;
             if ($aiLabel) {
                 $labeledItemsCount++;
-                $labelMatches = (strtolower($aiLabel) === strtolower($empiricalBand));
+                $normalizedAi = $this->normalizeDifficultyLabel($aiLabel);
+                $normalizedEmpirical = $this->normalizeDifficultyLabel($empiricalBand);
+                $labelMatches = ($normalizedAi !== null && $normalizedAi === $normalizedEmpirical);
                 if ($labelMatches) {
                     $labelMatchesCount++;
                 }
@@ -588,6 +590,32 @@ class ItemAnalysisService
         }
 
         return 'Average';
+    }
+
+    /**
+     * Normalize AI difficulty labels and empirical bands for consistent comparison.
+     */
+    public function normalizeDifficultyLabel(?string $label): ?string
+    {
+        if ($label === null) {
+            return null;
+        }
+
+        $clean = strtolower(trim($label));
+
+        if (in_array($clean, ['easy', 'very easy', 'basic'], true)) {
+            return 'easy';
+        }
+
+        if (in_array($clean, ['normal', 'average', 'medium', 'moderate'], true)) {
+            return 'average';
+        }
+
+        if (in_array($clean, ['hard', 'difficult', 'very difficult', 'challenging'], true)) {
+            return 'difficult';
+        }
+
+        return $clean;
     }
 
     private function resolveConfidence(int $n): string
