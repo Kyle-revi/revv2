@@ -715,6 +715,8 @@ Route::post('/student-performance/{class}/refresh-ai', [PerformanceController::c
 Route::post('/student-performance/{class}/assessment-refresh-ai', [PerformanceController::class, 'refreshAssessmentAiSummary'])->name('student.performance.assessment.refresh');
 Route::get('/student-performance/{class}/assessment-analysis/{student}', [PerformanceController::class, 'studentAssessmentAnalysis'])->name('student.assessment.analysis');
 Route::post('/student-performance/{class}/assessment-analysis/{student}/generate-ai', [PerformanceController::class, 'generateAssessmentAiAnalysis'])->name('student.assessment.analysis.generate-ai');
+Route::get('/modules/{module}/item-analysis', [PerformanceController::class, 'moduleItemAnalysis'])->name('modules.item-analysis')->middleware('auth');
+Route::post('/modules/{module}/item-analysis/run', [PerformanceController::class, 'runModuleItemAnalysis'])->name('modules.item-analysis.run')->middleware('auth');
 
 // ── Chat ──
 Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');

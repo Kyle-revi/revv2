@@ -10,6 +10,7 @@ use App\Models\QuizAttempt;
 use App\Models\User;
 use App\Services\AiSettingsResolver;
 use App\Services\CloudflareAI;
+use App\Services\ItemAnalysis\ItemAnalysisService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -806,5 +807,75 @@ class PerformanceController extends Controller
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Display comprehensive psychometric item analysis dashboard for a module quiz/assessment.
+     */
+    public function moduleItemAnalysis(Request $request, Module $module)
+    {
+        $user = Auth::user();
+
+        if ($user->role !== 'admin' && $user->role !== 'superadmin') {
+            if ($module->class && $module->class->created_by !== $user->id) {
+                abort(403, 'You do not have permission to view item analysis for this class.');
+            }
+            if (! $module->class && $module->created_by !== $user->id) {
+                abort(403, 'You do not have permission to view item analysis for this module.');
+            }
+        }
+
+        $stage = $request->query('stage', $module->quiz_stage);
+        $stage = ($stage !== '' && $stage !== null) ? $stage : null;
+
+        $service = app(ItemAnalysisService::class);
+        $analysis = $service->analyzeQuiz($module->id, $stage, true);
+
+        $availableStages = [];
+        if ($module->preTestQuestions()->exists()) {
+            $availableStages[] = 'pre_test';
+        }
+        if ($module->postTestQuestions()->exists()) {
+            $availableStages[] = 'post_test';
+        }
+
+        return view('pages.teacher.item-analysis', [
+            'module' => $module,
+            'class' => $module->class,
+            'currentStage' => $stage,
+            'availableStages' => $availableStages,
+            'testStats' => $analysis['test'],
+            'itemStats' => $analysis['items'],
+        ]);
+    }
+
+    /**
+     * Run / recalculate psychometric item analysis on demand via API/POST.
+     */
+    public function runModuleItemAnalysis(Request $request, Module $module)
+    {
+        $user = Auth::user();
+
+        if ($user->role !== 'admin' && $user->role !== 'superadmin') {
+            if ($module->class && $module->class->created_by !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            if (! $module->class && $module->created_by !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
+        $stage = $request->input('stage', $module->quiz_stage);
+        $stage = ($stage !== '' && $stage !== null) ? $stage : null;
+
+        $service = app(ItemAnalysisService::class);
+        $analysis = $service->analyzeQuiz($module->id, $stage, true);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Psychometric item analysis updated successfully.',
+            'test' => $analysis['test'],
+            'items' => $analysis['items'],
+        ]);
     }
 }

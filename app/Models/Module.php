@@ -169,4 +169,14 @@ class Module extends Model
 
         return ($this->max_attempts ?? 1) + $grants;
     }
+
+    public function itemAnalysisResults(): HasMany
+    {
+        return $this->hasMany(ItemAnalysisResult::class);
+    }
+
+    public function testAnalysisResults(): HasMany
+    {
+        return $this->hasMany(TestAnalysisResult::class);
+    }
 }

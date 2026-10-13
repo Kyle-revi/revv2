@@ -2282,6 +2282,11 @@ function loadModulesForTab(classId, type, containerId) {
 
             let duplicateBtn = '<button class="rv-btn rv-btn-secondary" title="Duplicate (New clean copy)" style="height:28px;padding:0 10px;font-size:16px;" onclick="duplicateModuleFromTab(' + m.id + ', \'' + type + '\', \'' + containerId + '\')"><i class="fas fa-copy"></i></button>';
 
+            let itemAnalysisBtn = '';
+            if (m.is_quiz || m.is_formal_assessment) {
+                itemAnalysisBtn = '<a href="/modules/' + m.id + '/item-analysis" class="rv-btn rv-btn-secondary" style="height:28px;padding:0 8px;font-size:12px;font-weight:600;text-decoration:none;" title="Psychometric Item Analysis"><i class="fas fa-microscope"></i> Item Analysis</a>';
+            }
+
             let toggleStatusBtn = '';
             if (m.is_quiz || m.is_formal_assessment) {
                 if (m.is_open) {
@@ -2317,6 +2322,7 @@ function loadModulesForTab(classId, type, containerId) {
                 '</div>' +
                 '<div class="rv-module-actions" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
                     toggleStatusBtn +
+                    itemAnalysisBtn +
                     editBtn +
                     duplicateBtn +
                     viewBtn +

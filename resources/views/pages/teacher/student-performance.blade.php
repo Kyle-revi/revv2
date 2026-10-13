@@ -737,6 +737,11 @@
                         </option>
                     @endforeach
                 </select>
+                @if(isset($selectedQuizModuleId) && $selectedQuizModuleId !== 'all')
+                    <a href="{{ route('modules.item-analysis', $selectedQuizModuleId) }}" class="sp-refresh-btn" style="text-decoration:none;" title="Psychometric Item Analysis">
+                        <i class="fas fa-microscope" style="color:#245E55;"></i> Item Analysis
+                    </a>
+                @endif
             </div>
         </div>
 
@@ -848,6 +853,11 @@
                     </option>
                 @endforeach
             </select>
+            @if(isset($selectedAssessModuleId) && $selectedAssessModuleId !== 'all')
+                <a href="{{ route('modules.item-analysis', $selectedAssessModuleId) }}" class="sp-refresh-btn" style="text-decoration:none;" title="Psychometric Item Analysis">
+                    <i class="fas fa-microscope" style="color:#245E55;"></i> Item Analysis
+                </a>
+            @endif
         </div>
 
         {{-- Assessment-Level Base Attempt Settings (Per Test) --}}

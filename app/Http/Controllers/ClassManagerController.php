@@ -13,6 +13,7 @@ use App\Models\TestBankQuestion;
 use App\Models\User;
 use App\Services\AiSettingsResolver;
 use App\Services\CloudflareAI;
+use App\Services\ItemAnalysis\ItemAnalysisService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -2770,6 +2771,13 @@ POWERSHELL;
             $quizStage = $validated['quiz_stage'] ?? null;
 
             DB::transaction(function () use ($module, $allGeneratedQuestions, $allowedDifficulties, $quizStage) {
+                // Safeguard: Compute and archive psychometric item analysis before replacing questions
+                try {
+                    app(ItemAnalysisService::class)->analyzeQuiz($module->id, $quizStage, true);
+                } catch (\Throwable $e) {
+                    Log::warning('Failed archiving item analysis before regenerating questions: '.$e->getMessage());
+                }
+
                 QuizQuestion::query()
                     ->where('module_id', $module->id)
                     ->where('quiz_stage', $quizStage)
