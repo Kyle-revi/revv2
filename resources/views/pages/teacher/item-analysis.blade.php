@@ -50,9 +50,9 @@
         border: 1px solid #e5e7eb;
     }
     .ia-header-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: #111827;
+        font-size: 22px;
+        font-weight: 500;
+        color: #111;
         margin-bottom: 4px;
     }
     .ia-header-meta {
@@ -76,14 +76,14 @@
         padding: 6px 14px;
         border-radius: 8px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
         color: #4b5563;
         text-decoration: none;
         transition: all 0.15s ease;
     }
     .ia-stage-tab.active {
         background: #fff;
-        color: #111827;
+        color: #111;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
 
@@ -93,7 +93,7 @@
         align-items: center;
         gap: 5px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 500;
         padding: 3px 10px;
         border-radius: 99px;
         text-transform: uppercase;
@@ -121,7 +121,7 @@
     }
     .ia-kpi-label {
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: #6b7280;
@@ -131,9 +131,9 @@
         align-items: center;
     }
     .ia-kpi-val {
-        font-size: 26px;
-        font-weight: 700;
-        color: #111827;
+        font-size: 32px;
+        font-weight: 500;
+        color: #111;
         line-height: 1.1;
     }
     .ia-kpi-sub {
@@ -166,7 +166,7 @@
         padding: 6px 14px;
         border-radius: 8px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
     }
     .ia-pill-retain { background: #dcfce7; color: #166534; }
     .ia-pill-revise { background: #fef3c7; color: #92400e; }
@@ -190,9 +190,9 @@
         gap: 12px;
     }
     .ia-card-title {
-        font-size: 17px;
-        font-weight: 700;
-        color: #111827;
+        font-size: 19px;
+        font-weight: 500;
+        color: #111;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -237,7 +237,7 @@
     .ia-table th {
         background: #f9fafb;
         color: #4b5563;
-        font-weight: 600;
+        font-weight: 500;
         padding: 10px 14px;
         border-bottom: 1px solid #e5e7eb;
         white-space: nowrap;
@@ -264,7 +264,7 @@
         padding: 3px 8px;
         border-radius: 6px;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.03em;
     }
@@ -278,7 +278,7 @@
     .badge-disc-good  { background: #e0f2fe; color: #0369a1; }
     .badge-disc-marg  { background: #fef3c7; color: #92400e; }
     .badge-disc-poor  { background: #fee2e2; color: #991b1b; }
-    .badge-disc-neg   { background: #991b1b; color: #fff; font-weight: 800; }
+    .badge-disc-neg   { background: #991b1b; color: #fff; font-weight: 500; }
 
     .badge-verdict-retain  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
     .badge-verdict-revise  { background: #fef3c7; color: #92400e; border: 1px solid #fde047; }
@@ -290,7 +290,7 @@
         align-items: center;
         gap: 3px;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         padding: 2px 6px;
         border-radius: 4px;
         margin: 2px 2px 0 0;
@@ -309,7 +309,7 @@
     .calibration-label {
         width: 100px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
         color: #374151;
         flex-shrink: 0;
     }
@@ -329,8 +329,8 @@
     .calibration-val {
         width: 80px;
         font-size: 13px;
-        font-weight: 700;
-        color: #111827;
+        font-weight: 500;
+        color: #111;
         text-align: right;
         flex-shrink: 0;
     }
@@ -395,7 +395,7 @@
     .opt-table th {
         background: #f9fafb;
         color: #4b5563;
-        font-weight: 600;
+        font-weight: 500;
         padding: 8px 12px;
         border-bottom: 1px solid #e5e7eb;
         text-align: left;
@@ -407,10 +407,17 @@
     }
     .opt-row-key {
         background: #f0fdf4 !important;
-        font-weight: 600;
+        font-weight: 500;
     }
     .opt-row-problem {
         background: #fff1f2 !important;
+    }
+
+    .ia-wrapper strong,
+    .ia-wrapper b,
+    .ia-modal-dialog strong,
+    .ia-modal-dialog b {
+        font-weight: 500;
     }
 </style>
 
@@ -546,8 +553,8 @@
     @endphp
     <div class="ia-summary-card">
         <div>
-            <span style="font-weight:700;color:#111827;font-size:14px;margin-right:12px;">Item Health Summary:</span>
-            <span style="font-size:13px;color:#6b7280;">Based on Classical Test Theory ($p$ and $D$ indices)</span>
+            <span style="font-weight:500;color:#111;font-size:14px;margin-right:12px;">Item Health Summary:</span>
+            <span style="font-size:13px;color:#6b7280;">Based on Classical Test Theory (Difficulty [p] and Discrimination [D] indices)</span>
         </div>
         <div class="ia-summary-counts">
             <span class="ia-pill ia-pill-retain" title="High discriminating questions with optimal difficulty">
@@ -583,7 +590,7 @@
                     AI Difficulty Calibration Verification
                 </div>
                 <p style="font-size:13px;color:#6b7280;margin-top:2px;">
-                    Empirical verification of generative model difficulty calibration. Monotonic validity requires $\bar{p}_{\text{Easy}} > \bar{p}_{\text{Average}} > \bar{p}_{\text{Difficult}}$ (higher $p$ = easier question).
+                    Empirical verification of generative model difficulty calibration. Monotonic validity requires Mean p(Easy) > Mean p(Average) > Mean p(Difficult) (higher p indicates an easier question).
                 </p>
             </div>
             @if($pEasy !== null && $pAvg !== null && $pDiff !== null && $pEasy >= $pAvg && $pAvg >= $pDiff)
@@ -643,7 +650,7 @@
         @if(count($itemStats) === 0)
             <div style="text-align:center;padding:40px 20px;color:#9ca3af;">
                 <i class="fas fa-clipboard-list" style="font-size:36px;margin-bottom:12px;display:block;"></i>
-                <p style="font-size:16px;font-weight:600;color:#374151;">No questions found or no attempts submitted yet.</p>
+                <p style="font-size:16px;font-weight:500;color:#374151;">No questions found or no attempts submitted yet.</p>
                 <p style="font-size:14px;margin-top:4px;">Students must submit at least one attempt to compute item psychometrics.</p>
             </div>
         @else
@@ -654,9 +661,9 @@
                             <th style="width:40px;">#</th>
                             <th style="min-width:280px;">Question Stem</th>
                             <th>AI Label</th>
-                            <th>Diff ($p$)</th>
-                            <th>Discrim ($D$)</th>
-                            <th>$r_{pb}$</th>
+                            <th>Diff (p)</th>
+                            <th>Discrim (D)</th>
+                            <th>r_pb</th>
                             <th>DE</th>
                             <th>Verdict</th>
                             <th style="min-width:180px;">Diagnostic Flags</th>
@@ -675,9 +682,9 @@
                             <tr data-verdict="{{ $v }}"
                                 data-has-flags="{{ $hasFlags ? '1' : '0' }}"
                                 onclick="openItemDrawer({{ $idx }})">
-                                <td style="font-weight:700;color:#6b7280;">{{ $idx + 1 }}</td>
+                                <td style="font-weight:500;color:#6b7280;">{{ $idx + 1 }}</td>
                                 <td>
-                                    <div style="font-weight:500;color:#111827;line-height:1.4;">
+                                    <div style="font-weight:500;color:#111;line-height:1.4;">
                                         {{ \Illuminate\Support\Str::limit($item['question_text'], 90) }}
                                     </div>
                                     <span style="font-size:11px;color:#9ca3af;">Key: [ <strong>{{ $item['correct_option'] }}</strong> ]</span>
@@ -685,7 +692,7 @@
                                 <td>
                                     @if($item['ai_difficulty_label'])
                                         <span class="badge" style="background:#f3f4f6;color:#374151;">
-                                            {{ $item['ai_difficulty_label'] }}
+                                             {{ $item['ai_difficulty_label'] }}
                                         </span>
                                     @else
                                         <span style="color:#9ca3af;">—</span>
@@ -693,7 +700,7 @@
                                 </td>
                                 <td>
                                     @if($pIndex !== null)
-                                        <div style="font-weight:700;">{{ number_format($pIndex, 2) }}</div>
+                                        <div style="font-weight:500;color:#111;">{{ number_format($pIndex, 2) }}</div>
                                         @php
                                             $diffClass = 'badge-diff-avg';
                                             if ($pIndex <= 0.20) $diffClass = 'badge-diff-vdiff';
@@ -709,7 +716,7 @@
                                 </td>
                                 <td>
                                     @if($dIndex !== null)
-                                        <div style="font-weight:700;">{{ number_format($dIndex, 2) }}</div>
+                                        <div style="font-weight:500;color:#111;">{{ number_format($dIndex, 2) }}</div>
                                         @php
                                             $discClass = 'badge-disc-marg';
                                             if ($dIndex < 0) $discClass = 'badge-disc-neg';
@@ -728,7 +735,7 @@
                                 </td>
                                 <td>
                                     @if($item['distractor_efficiency'] !== null)
-                                        <span style="font-weight:600;color: {{ $item['distractor_efficiency'] >= 66 ? '#166534' : '#b45309' }};">
+                                        <span style="font-weight:500;color: {{ $item['distractor_efficiency'] >= 66 ? '#166534' : '#b45309' }};">
                                             {{ number_format($item['distractor_efficiency'], 0) }}%
                                         </span>
                                     @else
@@ -781,7 +788,7 @@
     <div class="ia-modal-dialog" id="diagnosticModalDialog" onclick="event.stopPropagation()">
         <div class="ia-modal-header">
             <div>
-                <div style="font-size:18px;font-weight:700;color:#111827;display:flex;align-items:center;gap:8px;">
+                <div style="font-size:18px;font-weight:500;color:#111;display:flex;align-items:center;gap:8px;">
                     <i class="fas fa-microscope" style="color:#245E55;"></i>
                     <span id="drawerTitle">Question Diagnostics</span>
                 </div>
@@ -795,8 +802,8 @@
         <div class="ia-modal-body">
             {{-- Stem card --}}
             <div style="background:#f9fafb;padding:16px;border-radius:10px;border:1px solid #e5e7eb;">
-                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Question Stem</div>
-                <div id="drawerStemText" style="font-size:15px;font-weight:600;color:#111827;line-height:1.5;"></div>
+                <div style="font-size:11px;font-weight:500;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">Question Stem</div>
+                <div id="drawerStemText" style="font-size:15px;font-weight:500;color:#111;line-height:1.5;"></div>
                 <div style="margin-top:10px;display:flex;gap:12px;align-items:center;font-size:13px;">
                     <span>Correct Key: <strong id="drawerCorrectKey" style="color:#166534;"></strong></span>
                     <span>&bull;</span>
@@ -809,34 +816,34 @@
             {{-- Stat pills row --}}
             <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;">
                 <div style="background:#fff;border:1px solid #e5e7eb;padding:10px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#6b7280;font-weight:600;">Difficulty ($p$)</div>
-                    <div id="drawerPValue" style="font-size:18px;font-weight:700;color:#111827;"></div>
+                    <div style="font-size:11px;color:#6b7280;font-weight:500;">Difficulty (p)</div>
+                    <div id="drawerPValue" style="font-size:18px;font-weight:500;color:#111;"></div>
                     <div id="drawerPBadge" style="font-size:11px;"></div>
                 </div>
                 <div style="background:#fff;border:1px solid #e5e7eb;padding:10px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#6b7280;font-weight:600;">Discrimination ($D$)</div>
-                    <div id="drawerDValue" style="font-size:18px;font-weight:700;color:#111827;"></div>
+                    <div style="font-size:11px;color:#6b7280;font-weight:500;">Discrimination (D)</div>
+                    <div id="drawerDValue" style="font-size:18px;font-weight:500;color:#111;"></div>
                     <div id="drawerDBadge" style="font-size:11px;"></div>
                 </div>
                 <div style="background:#fff;border:1px solid #e5e7eb;padding:10px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#6b7280;font-weight:600;">Rest $r_{pb}$</div>
-                    <div id="drawerRpbValue" style="font-size:18px;font-weight:700;color:#111827;"></div>
+                    <div style="font-size:11px;color:#6b7280;font-weight:500;">Rest r_pb</div>
+                    <div id="drawerRpbValue" style="font-size:18px;font-weight:500;color:#111;"></div>
                     <div style="font-size:11px;color:#6b7280;">Item-Rest Corr</div>
                 </div>
                 <div style="background:#fff;border:1px solid #e5e7eb;padding:10px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#6b7280;font-weight:600;">Distractor Efficiency</div>
-                    <div id="drawerDEValue" style="font-size:18px;font-weight:700;color:#111827;"></div>
+                    <div style="font-size:11px;color:#6b7280;font-weight:500;">Distractor Efficiency</div>
+                    <div id="drawerDEValue" style="font-size:18px;font-weight:500;color:#111;"></div>
                     <div style="font-size:11px;color:#6b7280;">Functional options</div>
                 </div>
                 <div style="background:#fff;border:1px solid #e5e7eb;padding:10px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#6b7280;font-weight:600;">Final Verdict</div>
-                    <div id="drawerVerdictValue" style="font-size:16px;font-weight:700;margin-top:2px;"></div>
+                    <div style="font-size:11px;color:#6b7280;font-weight:500;">Final Verdict</div>
+                    <div id="drawerVerdictValue" style="font-size:16px;font-weight:500;margin-top:2px;"></div>
                 </div>
             </div>
 
             {{-- Diagnostic Findings Alert Box --}}
             <div id="drawerFindingsBox" style="display:none;padding:14px 16px;border-radius:10px;border-left:4px solid #ef4444;background:#fef2f2;">
-                <div style="font-size:13px;font-weight:700;color:#991b1b;margin-bottom:4px;">
+                <div style="font-size:13px;font-weight:500;color:#991b1b;margin-bottom:4px;">
                     <i class="fas fa-exclamation-circle"></i> Diagnostic Findings & Recommendations
                 </div>
                 <ul id="drawerFindingsList" style="margin:0;padding-left:18px;font-size:13px;color:#7f1d1d;line-height:1.6;">
@@ -845,7 +852,7 @@
 
             {{-- Distractor Breakdown Table --}}
             <div>
-                <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:8px;">
+                <div style="font-size:14px;font-weight:500;color:#111;margin-bottom:8px;">
                     Option Breakdown & Distractor Traffic (Kelley's 27% Upper vs Lower Groups)
                 </div>
                 <div style="overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px;">
