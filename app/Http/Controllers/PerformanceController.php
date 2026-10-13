@@ -227,13 +227,13 @@ class PerformanceController extends Controller
             ->where('is_formal_assessment', false)
             ->orderBy('order')
             ->orderBy('id')
-            ->get(['id', 'title']);
+            ->get(['id', 'title', 'is_formal_assessment', 'quiz_stage']);
 
         $formalAssessmentModules = Module::where('class_id', $class->id)
             ->where('is_formal_assessment', true)
             ->orderBy('order')
             ->orderBy('id')
-            ->get(['id', 'title']);
+            ->get(['id', 'title', 'is_formal_assessment', 'quiz_stage']);
 
         $quizModuleId = request()->filled('quiz_module_id') && request('quiz_module_id') !== 'all'
             ? (int) request('quiz_module_id')

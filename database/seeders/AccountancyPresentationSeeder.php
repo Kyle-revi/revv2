@@ -26,6 +26,7 @@ class AccountancyPresentationSeeder extends Seeder
     {
         DB::transaction(function () {
             $this->seedAccountancyData();
+            $this->call(PsychologyPresentationSeeder::class);
         });
     }
 

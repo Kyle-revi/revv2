@@ -49,6 +49,7 @@ while [ $COUNT -lt $MAX_TRIES ]; do
         php artisan db:seed --class=AdminSeeder --force || true
         php artisan db:seed --class=TeacherDemoSeeder --force || true
         php artisan db:seed --class=AccountancyPresentationSeeder --force || true
+        php artisan db:seed --class=PsychologyPresentationSeeder --force || true
         break
     else
         COUNT=$((COUNT + 1))
