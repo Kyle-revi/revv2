@@ -2305,6 +2305,17 @@
             ? renderAiInsightsCard(cachedInsights.strong, cachedInsights.weak, cachedInsights.recommendation)
             : renderAiInsightsLoading();
 
+        const mod = modules.find(m => m.id == currentModuleId);
+        const isPreTest = (currentQuizStage === 'pre_test')
+            || (mod && mod.quiz_stage === 'pre_test')
+            || (mod && (mod.assessment_purpose === 'pre_test' || mod.assessment_purpose === 'pre_assessment'))
+            || (mod && /pre[- ]?(test|assessment)/i.test(mod.title || ''));
+        const isPostTest = (currentQuizStage === 'post_test')
+            || (mod && mod.quiz_stage === 'post_test')
+            || (mod && (mod.assessment_purpose === 'post_test' || mod.assessment_purpose === 'post_assessment'))
+            || (mod && /post[- ]?(test|assessment)|final assessment/i.test(mod.title || ''));
+        const hideAttemptHistory = isPreTest || isPostTest;
+
         const retakeBtnHtml = buildRetakeButtonHtml(currentModuleId, attemptCount);
 
         $(quizRenderTarget).html(`
@@ -2328,10 +2339,12 @@
                 <div class="qz-ai-box" id="aiBox">
                     ${aiHtml}
                 </div>
+                ${hideAttemptHistory ? '' : `
                 <div class="qz-history-card" id="historyBox">
                     <p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>
                     <p class="qz-history-empty">Loading history...</p>
                 </div>
+                `}
                 <div class="qz-result-btns" id="qzResultBtns">
                     <button class="qz-btn qz-btn-outline" onclick="quizBackHandler()"><i class="fas fa-arrow-left"></i> Back</button>
                     ${retakeBtnHtml}
@@ -2339,10 +2352,27 @@
             </div>
         `);
 
-        loadAttemptHistory(currentModuleId, currentQuizStage);
+        if (!hideAttemptHistory) {
+            loadAttemptHistory(currentModuleId, currentQuizStage);
+        }
     }
 
     function loadAttemptHistory(targetModuleId, stage = null) {
+        const mod = modules.find(m => m.id == targetModuleId);
+        const isPreTest = (stage === 'pre_test')
+            || (mod && mod.quiz_stage === 'pre_test')
+            || (mod && (mod.assessment_purpose === 'pre_test' || mod.assessment_purpose === 'pre_assessment'))
+            || (mod && /pre[- ]?(test|assessment)/i.test(mod.title || ''));
+        const isPostTest = (stage === 'post_test')
+            || (mod && mod.quiz_stage === 'post_test')
+            || (mod && (mod.assessment_purpose === 'post_test' || mod.assessment_purpose === 'post_assessment'))
+            || (mod && /post[- ]?(test|assessment)|final assessment/i.test(mod.title || ''));
+        if (isPreTest || isPostTest) {
+            var box = document.getElementById('historyBox');
+            if (box) { box.style.display = 'none'; }
+            return;
+        }
+
         let url = `/modules/${targetModuleId}/quiz/history`;
         if (stage) {
             url += `?quiz_stage=${stage}`;

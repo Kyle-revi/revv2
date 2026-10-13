@@ -952,6 +952,22 @@ class QuizController extends Controller
             abort(403);
         }
 
+        $module = Module::find($snapshot->module_id);
+        $stage = $snapshot->quiz_stage ?? ($module?->quiz_stage);
+        $isPreOrPost = in_array($stage, ['pre_test', 'post_test'], true)
+            || ($module && (
+                in_array($module->assessment_purpose, ['pre_test', 'post_test', 'pre_assessment', 'post_assessment'], true)
+                || preg_match('/pre[- ]?(test|assessment)|post[- ]?(test|assessment)|final assessment/i', $module->title ?? '')
+            ));
+
+        if (Auth::user()?->role === 'student' && $isPreOrPost && ! ($module?->is_mock_board)) {
+            return response()->json([
+                'success' => false,
+                'disabled' => true,
+                'message' => 'Question and answer breakdown is disabled for pre-test and post-test assessments.',
+            ], 403);
+        }
+
         $questions = $snapshot->questions_snapshot ?: [];
 
         // If questions_snapshot is empty or missing options, backfill from QuizQuestion & QuizAnswer
@@ -1014,13 +1030,13 @@ class QuizController extends Controller
         $user = Auth::user();
         $stage = $this->resolveStage($request);
 
-        // Item analysis for standard class Pre-Test is disabled for students (enabled for mock boards)
-        $isPreTest = ($stage === 'pre_test') || ($module->quiz_stage === 'pre_test');
-        if ($user && $user->role === 'student' && $isPreTest && ! $module->is_mock_board) {
+        // Item analysis for standard class Pre-Test and Post-Test is disabled for students (enabled for mock boards)
+        $isPreOrPost = in_array($stage, ['pre_test', 'post_test'], true) || in_array($module->quiz_stage, ['pre_test', 'post_test'], true);
+        if ($user && $user->role === 'student' && $isPreOrPost && ! $module->is_mock_board) {
             return response()->json([
                 'success' => false,
                 'disabled' => true,
-                'message' => 'Item analysis is disabled for Pre-Test (Diagnostic Assessment). Full item analysis is available on Post-Test.',
+                'message' => 'Item analysis is disabled for Pre-Test and Post-Test assessments.',
             ], 403);
         }
 

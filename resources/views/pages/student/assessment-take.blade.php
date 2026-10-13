@@ -1389,7 +1389,16 @@ function beginQuizUi() {
 
         var dashOff  = dashArr - (pct / 100 * dashArr);
 
-
+        var moduleTitle = @json($module->title ?? '');
+        var quizStage = @json($module->quiz_stage ?? ($quiz_stage ?? ''));
+        var assessmentPurpose = @json($module->assessment_purpose ?? '');
+        var isPreTest = (quizStage === 'pre_test')
+            || (assessmentPurpose === 'pre_test' || assessmentPurpose === 'pre_assessment')
+            || /pre[- ]?(test|assessment)/i.test(moduleTitle);
+        var isPostTest = (quizStage === 'post_test')
+            || (assessmentPurpose === 'post_test' || assessmentPurpose === 'post_assessment')
+            || /post[- ]?(test|assessment)|final assessment/i.test(moduleTitle);
+        var hideAttemptHistory = isPreTest || isPostTest;
 
         document.getElementById('quizScreen').innerHTML =
 
@@ -1427,13 +1436,14 @@ function beginQuizUi() {
 
             '</div>' +
 
+            (hideAttemptHistory ? '' :
             '<div class="qz-history-card" id="historyBox">' +
 
             '<p class="qz-history-title"><i class="fas fa-history"></i> Attempt History</p>' +
 
             '<p class="qz-history-empty">Loading history...</p>' +
 
-            '</div>' +
+            '</div>') +
 
             '<div class="qz-result-btns">' +
 
@@ -1443,7 +1453,9 @@ function beginQuizUi() {
 
             '</div></div>';
 
-        loadAttemptHistory();
+        if (!hideAttemptHistory) {
+            loadAttemptHistory();
+        }
 
     }
 
@@ -1504,6 +1516,20 @@ function beginQuizUi() {
 
 
     function loadAttemptHistory() {
+        var moduleTitle = @json($module->title ?? '');
+        var quizStage = @json($module->quiz_stage ?? ($quiz_stage ?? ''));
+        var assessmentPurpose = @json($module->assessment_purpose ?? '');
+        var isPreTest = (quizStage === 'pre_test')
+            || (assessmentPurpose === 'pre_test' || assessmentPurpose === 'pre_assessment')
+            || /pre[- ]?(test|assessment)/i.test(moduleTitle);
+        var isPostTest = (quizStage === 'post_test')
+            || (assessmentPurpose === 'post_test' || assessmentPurpose === 'post_assessment')
+            || /post[- ]?(test|assessment)|final assessment/i.test(moduleTitle);
+        if (isPreTest || isPostTest) {
+            var box = document.getElementById('historyBox');
+            if (box) { box.style.display = 'none'; }
+            return;
+        }
 
         fetch('/modules/' + moduleId + '/quiz/history', {
 
