@@ -776,9 +776,9 @@ class StudentMockBoardController extends Controller
             $accuracy = ($data['correct'] / $data['total']) * 100;
 
             if ($accuracy >= 75) {
-                $strongAreas[] = "• $subject (".round($accuracy).'% Mastery)';
+                $strongAreas[] = "$subject (".round($accuracy).'% Mastery)';
             } else {
-                $weakAreas[] = "• $subject (".round($accuracy).'% Mastery)';
+                $weakAreas[] = "$subject (".round($accuracy).'% Mastery)';
             }
         }
 
