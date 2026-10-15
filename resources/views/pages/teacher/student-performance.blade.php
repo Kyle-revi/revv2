@@ -2088,7 +2088,7 @@ async function openItemAnalysis(studentId, studentName, isAssessment) {
 
         currentDialogStudentData = {
             studentId: studentId,
-            studentName: safeName,
+            studentName: studentName || 'Student',
             isAssessment: isAssessment,
             attempt: data.attempt,
             answers: answers
@@ -2416,34 +2416,40 @@ function exportPerformanceToExcel(type) {
             ['Class:', '', className, '', '', ''],
             ['Assessment Type:', '', activeTabName, '', '', ''],
             ['Module / Filter:', '', selectedModuleName, '', '', ''],
-            ['Total Questions Analyzed:', '', questions.length, '', '', ''],
+            ['Total Questions Analyzed:', '', String(questions.length) + ' Questions', '', '', ''],
             ['Exported On:', '', new Date().toLocaleString(), '', '', ''],
             [], // empty row separator
             ['#', 'Question Text', 'Correct Answers', 'Total Attempts', 'Accuracy Rate', 'Difficulty Level']
         ];
 
+        var maxQLen = 50;
         questions.forEach(function(q, i) {
             var pct = Number(q.pct_correct || 0);
             var difficulty = pct >= 70 ? 'High (>=70%)' : (pct >= 40 ? 'Moderate (40-69%)' : 'Low (<40%)');
             var qText = q.question_text ? decodeAndStripHtml(q.question_text) : '—';
+            if (qText.length > maxQLen) {
+                maxQLen = qText.length;
+            }
             questionRows.push([
                 'Q' + (i + 1),
                 qText,
-                q.correct_count || 0,
-                q.total_answers || 0,
+                String(q.correct_count || 0),
+                String(q.total_answers || 0),
                 pct.toFixed(1) + '%',
                 difficulty
             ]);
         });
 
+        var qColWidth = Math.min(Math.max(maxQLen + 4, 75), 115);
+
         var wsQuestions = XLSX.utils.aoa_to_sheet(questionRows);
         wsQuestions['!cols'] = [
-            { wch: 8 },  // #
-            { wch: 65 }, // Question Text
-            { wch: 18 }, // Correct Answers
-            { wch: 18 }, // Total Attempts
-            { wch: 18 }, // Accuracy Rate
-            { wch: 24 }  // Difficulty Level
+            { wch: 8 },         // #
+            { wch: qColWidth }, // Question Text (dynamic width so questions are never truncated)
+            { wch: 18 },        // Correct Answers
+            { wch: 18 },        // Total Attempts
+            { wch: 18 },        // Accuracy Rate
+            { wch: 24 }         // Difficulty Level
         ];
 
         wsQuestions['!merges'] = [
