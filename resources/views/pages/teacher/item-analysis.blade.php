@@ -430,8 +430,8 @@
 
     @media print {
         @page {
-            size: landscape;
-            margin: 10mm 12mm;
+            size: portrait;
+            margin: 12mm 10mm;
         }
         body {
             background: #fff !important;
@@ -471,11 +471,11 @@
             page-break-inside: avoid;
         }
         .ia-kpi-grid {
-            grid-template-columns: repeat(6, 1fr) !important;
+            grid-template-columns: repeat(3, 1fr) !important;
             gap: 8px !important;
         }
         .ia-kpi-card {
-            padding: 10px 12px !important;
+            padding: 8px 10px !important;
         }
         .ia-kpi-val {
             font-size: 20px !important;
