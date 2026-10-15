@@ -516,18 +516,25 @@
 
     {{-- Institutional Print Header (Shown only during Print / PDF generation) --}}
     <div class="ia-print-header">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:14px;">
-            <div>
-                <h1 style="font-size:18px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.5px; color:#0f172a;">
+        <div style="display:flex; align-items:center; gap:16px; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:14px;">
+            <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="Pasig Catholic College" style="width:68px; height:68px; object-fit:contain;">
+            <div style="flex:1;">
+                <div style="font-size:15px; font-weight:800; color:#0f172a; letter-spacing:0.5px; text-transform:uppercase;">
+                    Pasig Catholic College
+                </div>
+                <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; margin-bottom:2px;">
+                    College Department &bull; Center for Teaching & Learning Assessment
+                </div>
+                <h1 style="font-size:15px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.3px; color:#0f172a;">
                     Examination Quality & Psychometric Validation Report
                 </h1>
-                <p style="font-size:12px; color:#475569; margin:3px 0 0 0;">
-                    Classical Test Theory (CTT) Diagnostic, Item Calibration, & Generative Question Verification
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">
+                    Classical Test Theory (CTT) Diagnostic, Item Calibration, & Question Verification
                 </p>
             </div>
-            <div style="text-align:right; font-size:11.5px; color:#334155;">
+            <div style="text-align:right; font-size:11px; color:#334155; white-space:nowrap;">
                 <p style="margin:0;"><strong>Report Date:</strong> {{ now()->format('F d, Y h:i A') }}</p>
-                <p style="margin:2px 0 0 0;"><strong>Module / Assessment:</strong> {{ $module->title }}</p>
+                <p style="margin:2px 0 0 0;"><strong>Module:</strong> {{ $module->title }}</p>
                 @if($class)
                     <p style="margin:2px 0 0 0;"><strong>Class:</strong> {{ $class->name }} ({{ $class->code }})</p>
                 @endif

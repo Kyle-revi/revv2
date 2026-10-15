@@ -1092,6 +1092,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
+var pccLogoUrl   = @json(asset('assets/img/brand/pcc_logo.png'));
 var passFailChart  = null;
 var currentClassId = {{ $class->id }};
 var currentQuizModuleId = @json($selectedQuizModuleId ?? 'all');
@@ -2349,14 +2350,16 @@ function exportPerformanceToExcel(type) {
 
     // 1. Student Rankings Sheet Data
     var studentRows = [
-        ['CLASS PERFORMANCE REPORT', '', '', '', '', '', ''],
+        ['PASIG CATHOLIC COLLEGE', '', '', '', '', '', ''],
+        ['College Department • Academic Evaluation & Assessment Report', '', '', '', '', '', ''],
+        ['CLASS PERFORMANCE & STUDENT RANKING MASTERLIST', '', '', '', '', '', ''],
         ['Class:', '', className, '', '', '', ''],
         ['Assessment Type:', '', activeTabName, '', '', '', ''],
         ['Module / Filter:', '', selectedModuleName, '', '', '', ''],
         ['Passing Standard:', '', passingThreshold + '% Passing Grade', '', '', '', ''],
         ['Class Average:', '', classAvg, '', '', '', ''],
         ['Pass Rate:', '', passRate + ' (' + passCount + ' Passed, ' + failCount + ' Failed)', '', '', '', ''],
-        ['Total Students Recorded:', '', students.length, '', '', '', ''],
+        ['Total Students Recorded:', '', String(students.length), '', '', '', ''],
         ['Exported On:', '', new Date().toLocaleString(), '', '', '', ''],
         [], // empty row separator
         ['Rank', 'Student ID', 'Student Name', 'Program / Course', 'Raw Score', 'Average Score', 'Status']
@@ -2394,17 +2397,19 @@ function exportPerformanceToExcel(type) {
         { wch: 14 }  // Status
     ];
 
-    // Merges for the summary header so labels (Col A+B, width 28) and values (Col C..G, width 98) never clip!
+    // Merges for institutional headers and summary labels
     wsStudents['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // Title
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } }, { s: { r: 1, c: 2 }, e: { r: 1, c: 6 } }, // Class
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, { s: { r: 2, c: 2 }, e: { r: 2, c: 6 } }, // Assessment Type
-        { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, { s: { r: 3, c: 2 }, e: { r: 3, c: 6 } }, // Module
-        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, { s: { r: 4, c: 2 }, e: { r: 4, c: 6 } }, // Passing Standard
-        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, { s: { r: 5, c: 2 }, e: { r: 5, c: 6 } }, // Class Average
-        { s: { r: 6, c: 0 }, e: { r: 6, c: 1 } }, { s: { r: 6, c: 2 }, e: { r: 6, c: 6 } }, // Pass Rate
-        { s: { r: 7, c: 0 }, e: { r: 7, c: 1 } }, { s: { r: 7, c: 2 }, e: { r: 7, c: 6 } }, // Total Students
-        { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } }, { s: { r: 8, c: 2 }, e: { r: 8, c: 6 } }  // Exported On
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // PASIG CATHOLIC COLLEGE
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // College Department
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }, // Title
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, { s: { r: 3, c: 2 }, e: { r: 3, c: 6 } }, // Class
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, { s: { r: 4, c: 2 }, e: { r: 4, c: 6 } }, // Assessment Type
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, { s: { r: 5, c: 2 }, e: { r: 5, c: 6 } }, // Module
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 1 } }, { s: { r: 6, c: 2 }, e: { r: 6, c: 6 } }, // Passing Standard
+        { s: { r: 7, c: 0 }, e: { r: 7, c: 1 } }, { s: { r: 7, c: 2 }, e: { r: 7, c: 6 } }, // Class Average
+        { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } }, { s: { r: 8, c: 2 }, e: { r: 8, c: 6 } }, // Pass Rate
+        { s: { r: 9, c: 0 }, e: { r: 9, c: 1 } }, { s: { r: 9, c: 2 }, e: { r: 9, c: 6 } }, // Total Students
+        { s: { r: 10, c: 0 }, e: { r: 10, c: 1 } }, { s: { r: 10, c: 2 }, e: { r: 10, c: 6 } }  // Exported On
     ];
 
     XLSX.utils.book_append_sheet(wb, wsStudents, 'Student Rankings');
@@ -2412,6 +2417,8 @@ function exportPerformanceToExcel(type) {
     // 2. Question Breakdown / Item Analysis Sheet Data
     if (questions && questions.length > 0) {
         var questionRows = [
+            ['PASIG CATHOLIC COLLEGE', '', '', '', '', ''],
+            ['College Department • Center for Teaching & Learning Assessment', '', '', '', '', ''],
             ['ITEM ANALYSIS (QUESTION BREAKDOWN)', '', '', '', '', ''],
             ['Class:', '', className, '', '', ''],
             ['Assessment Type:', '', activeTabName, '', '', ''],
@@ -2453,12 +2460,14 @@ function exportPerformanceToExcel(type) {
         ];
 
         wsQuestions['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Title
-            { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } }, { s: { r: 1, c: 2 }, e: { r: 1, c: 5 } },
-            { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, { s: { r: 2, c: 2 }, e: { r: 2, c: 5 } },
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // PASIG CATHOLIC COLLEGE
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }, // College Department
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } }, // Title
             { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, { s: { r: 3, c: 2 }, e: { r: 3, c: 5 } },
             { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, { s: { r: 4, c: 2 }, e: { r: 4, c: 5 } },
-            { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, { s: { r: 5, c: 2 }, e: { r: 5, c: 5 } }
+            { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, { s: { r: 5, c: 2 }, e: { r: 5, c: 5 } },
+            { s: { r: 6, c: 0 }, e: { r: 6, c: 1 } }, { s: { r: 6, c: 2 }, e: { r: 6, c: 5 } },
+            { s: { r: 7, c: 0 }, e: { r: 7, c: 1 } }, { s: { r: 7, c: 2 }, e: { r: 7, c: 5 } }
         ];
 
         XLSX.utils.book_append_sheet(wb, wsQuestions, 'Question Item Analysis');
@@ -2589,12 +2598,20 @@ function printClassPerformance(type) {
             </style>
         </head>
         <body>
-            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h1 style="font-size: 18px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Institutional Class Performance Report</h1>
-                    <p style="font-size: 12px; color: #475569; margin: 3px 0 0 0;">Official Assessment Masterlist, Student Rankings, and Item Breakdown</p>
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px;">
+                <img src="${pccLogoUrl}" alt="Pasig Catholic College" style="width: 68px; height: 68px; object-fit: contain;">
+                <div style="flex: 1;">
+                    <div style="font-size: 15px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase;">
+                        Pasig Catholic College
+                    </div>
+                    <div style="font-size: 11px; color: #475569; font-weight: 600; text-transform: uppercase; margin-bottom: 2px;">
+                        College Department &bull; Academic Performance Evaluation
+                    </div>
+                    <h1 style="font-size: 15px; margin: 0; text-transform: uppercase; letter-spacing: 0.3px; color: #0f172a;">
+                        Official Class Performance Masterlist
+                    </h1>
                 </div>
-                <div style="text-align: right; font-size: 11px; color: #475569;">
+                <div style="text-align: right; font-size: 10.5px; color: #475569; white-space: nowrap;">
                     <p style="margin: 0;"><strong>Date:</strong> ${dateStr}</p>
                     <p style="margin: 2px 0 0 0;"><strong>Class:</strong> ${escapeHtml(className)}</p>
                     <p style="margin: 2px 0 0 0;"><strong>Type:</strong> ${escapeHtml(activeTabName)}</p>
@@ -2755,12 +2772,20 @@ function printStudentDiagnosticSlip() {
             </style>
         </head>
         <body>
-            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start;">
-                <div>
-                    <h2 style="font-size: 16px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Student Assessment Diagnostic Slip</h2>
-                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">Official Academic Advising & Performance Evaluation Record</p>
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; display: flex; align-items: center; gap: 14px;">
+                <img src="${pccLogoUrl}" alt="Pasig Catholic College" style="width: 58px; height: 58px; object-fit: contain;">
+                <div style="flex: 1;">
+                    <div style="font-size: 14px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase;">
+                        Pasig Catholic College
+                    </div>
+                    <div style="font-size: 10px; color: #475569; font-weight: 600; text-transform: uppercase;">
+                        College Department &bull; Academic Advising & Diagnostic Record
+                    </div>
+                    <h2 style="font-size: 14px; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.3px; color: #0f172a;">
+                        Student Assessment Diagnostic Slip
+                    </h2>
                 </div>
-                <div style="text-align: right; font-size: 10.5px; color: #475569;">
+                <div style="text-align: right; font-size: 10px; color: #475569; white-space: nowrap;">
                     <p style="margin: 0;"><strong>Date:</strong> ${dateStr}</p>
                     <p style="margin: 1px 0 0 0;"><strong>Class:</strong> ${escapeHtml(className)}</p>
                 </div>
