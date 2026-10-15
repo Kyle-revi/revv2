@@ -53,23 +53,23 @@
 
     {{-- INSTITUTIONAL PRINT HEADER (Displayed on Print / PDF only) --}}
     <div class="readiness-print-header">
-        <div style="display:flex; align-items:center; gap:16px; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:16px;">
-            <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="Pasig Catholic College" style="width:68px; height:68px; object-fit:contain;">
+        <div style="display:flex; align-items:flex-start; gap:16px; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:16px;">
+            <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="Pasig Catholic College" style="width:72px; height:72px; object-fit:contain; flex-shrink:0; margin-top:2px;">
             <div style="flex:1;">
-                <div style="font-size:15px; font-weight:800; color:#0f172a; letter-spacing:0.5px; text-transform:uppercase;">
+                <div style="font-size:15px; font-weight:800; color:#0f172a; letter-spacing:0.5px; text-transform:uppercase; line-height:1.2;">
                     Pasig Catholic College
                 </div>
-                <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; margin-bottom:2px;">
+                <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; margin-top:2px; margin-bottom:6px;">
                     College Department &bull; Licensure Examination Preparation & Diagnostic Center
                 </div>
-                <h1 style="font-size:15px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.3px; color:#0f172a;">
+                <h1 style="font-size:15px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.3px; color:#0f172a; line-height:1.25;">
                     Mock Board Licensure Readiness & Diagnostic Report
                 </h1>
-                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">
+                <p style="font-size:11px; color:#475569; margin:3px 0 0 0;">
                     Comprehensive Predictive Passing Likelihood & Item-Level Competency Evaluation
                 </p>
             </div>
-            <div style="text-align:right; font-size:11px; color:#334155; white-space:nowrap; line-height:1.4;">
+            <div style="text-align:right; font-size:11px; color:#334155; white-space:nowrap; line-height:1.45; flex-shrink:0;">
                 <p style="margin:0;"><strong>Report Date:</strong> {{ $report->generated_at?->format('F d, Y h:i A') ?? now()->format('F d, Y h:i A') }}</p>
                 <p style="margin:2px 0 0 0;"><strong>Student Name:</strong> {{ $user->name }}</p>
                 <p style="margin:2px 0 0 0;"><strong>Student ID:</strong> {{ $user->idnumber ?? '—' }}</p>
@@ -1460,8 +1460,8 @@
 
                     if (imageId !== null) {
                         ws.addImage(imageId, {
-                            tl: { col: 0.15, row: 0.15 },
-                            ext: { width: 58, height: 58 }
+                            tl: { col: 0.12, row: 0.15 },
+                            ext: { width: 54, height: 54 }
                         });
                     }
 
@@ -1650,15 +1650,21 @@
                 let dRow = 5;
                 wsDom.getCell('A' + dRow).value = 'Mock Board:';
                 wsDom.getCell('A' + dRow).font = { bold: true };
-                wsDom.getCell('B' + dRow).value = d.boardTitle;
+                wsDom.mergeCells('A' + dRow + ':B' + dRow);
+                wsDom.getCell('C' + dRow).value = d.boardTitle;
+                wsDom.mergeCells('C' + dRow + ':H' + dRow);
                 dRow++;
-                wsDom.getCell('A' + dRow).value = 'Student:';
+                wsDom.getCell('A' + dRow).value = 'Student Name:';
                 wsDom.getCell('A' + dRow).font = { bold: true };
-                wsDom.getCell('B' + dRow).value = d.studentName + ' (' + d.studentProgram + ')';
+                wsDom.mergeCells('A' + dRow + ':B' + dRow);
+                wsDom.getCell('C' + dRow).value = d.studentName + ' (' + d.studentProgram + ')';
+                wsDom.mergeCells('C' + dRow + ':H' + dRow);
                 dRow++;
-                wsDom.getCell('A' + dRow).value = 'Exported At:';
+                wsDom.getCell('A' + dRow).value = 'Report Generated At:';
                 wsDom.getCell('A' + dRow).font = { bold: true };
-                wsDom.getCell('B' + dRow).value = d.generatedAt;
+                wsDom.mergeCells('A' + dRow + ':B' + dRow);
+                wsDom.getCell('C' + dRow).value = d.generatedAt;
+                wsDom.mergeCells('C' + dRow + ':H' + dRow);
                 dRow += 2;
 
                 const thDom = wsDom.getRow(dRow++);
@@ -1689,7 +1695,7 @@
                 }
 
                 wsDom.columns = [
-                    { width: 6 },
+                    { width: 13 },
                     { width: 34 },
                     { width: 16 },
                     { width: 16 },
@@ -1709,14 +1715,17 @@
                 wsGaps.getCell('A' + gRow).value = 'Mock Board:';
                 wsGaps.getCell('A' + gRow).font = { bold: true };
                 wsGaps.getCell('B' + gRow).value = d.boardTitle;
+                wsGaps.mergeCells('B' + gRow + ':D' + gRow);
                 gRow++;
-                wsGaps.getCell('A' + gRow).value = 'Student:';
+                wsGaps.getCell('A' + gRow).value = 'Student Name:';
                 wsGaps.getCell('A' + gRow).font = { bold: true };
                 wsGaps.getCell('B' + gRow).value = d.studentName + ' (' + d.studentProgram + ')';
+                wsGaps.mergeCells('B' + gRow + ':D' + gRow);
                 gRow++;
-                wsGaps.getCell('A' + gRow).value = 'Exported At:';
+                wsGaps.getCell('A' + gRow).value = 'Report Generated At:';
                 wsGaps.getCell('A' + gRow).font = { bold: true };
                 wsGaps.getCell('B' + gRow).value = d.generatedAt;
+                wsGaps.mergeCells('B' + gRow + ':D' + gRow);
                 gRow += 2;
 
                 const thGaps = wsGaps.getRow(gRow++);
@@ -1799,11 +1808,11 @@
                 wsPlan.getCell('A' + pRow).font = { bold: true };
                 wsPlan.getCell('B' + pRow).value = d.boardTitle;
                 pRow++;
-                wsPlan.getCell('A' + pRow).value = 'Student:';
+                wsPlan.getCell('A' + pRow).value = 'Student Name:';
                 wsPlan.getCell('A' + pRow).font = { bold: true };
                 wsPlan.getCell('B' + pRow).value = d.studentName + ' (' + d.studentProgram + ')';
                 pRow++;
-                wsPlan.getCell('A' + pRow).value = 'Exported At:';
+                wsPlan.getCell('A' + pRow).value = 'Report Generated At:';
                 wsPlan.getCell('A' + pRow).font = { bold: true };
                 wsPlan.getCell('B' + pRow).value = d.generatedAt;
                 pRow += 2;

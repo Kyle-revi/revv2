@@ -2381,8 +2381,8 @@ async function exportPerformanceToExcel(type) {
 
             if (imageId !== null) {
                 wsStudents.addImage(imageId, {
-                    tl: { col: 0.15, row: 0.15 },
-                    ext: { width: 62, height: 62 }
+                    tl: { col: 0.12, row: 0.15 },
+                    ext: { width: 54, height: 54 }
                 });
             }
 
@@ -2464,7 +2464,7 @@ async function exportPerformanceToExcel(type) {
             });
 
             wsStudents.columns = [
-                { width: 10 },
+                { width: 13 },
                 { width: 18 },
                 { width: 32 },
                 { width: 22 },
@@ -2482,8 +2482,8 @@ async function exportPerformanceToExcel(type) {
 
                 if (imageId !== null) {
                     wsQ.addImage(imageId, {
-                        tl: { col: 0.15, row: 0.15 },
-                        ext: { width: 62, height: 62 }
+                        tl: { col: 0.12, row: 0.15 },
+                        ext: { width: 54, height: 54 }
                     });
                 }
 
@@ -2559,7 +2559,7 @@ async function exportPerformanceToExcel(type) {
                 });
 
                 wsQ.columns = [
-                    { width: 8 },
+                    { width: 13 },
                     { width: Math.min(Math.max(maxQLen + 4, 75), 115) },
                     { width: 18 },
                     { width: 18 },
@@ -3016,8 +3016,8 @@ function printStudentDiagnosticSlip() {
             </style>
         </head>
         <body>
-            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; display: flex; align-items: center; gap: 14px;">
-                <img src="${pccLogoUrl}" alt="Pasig Catholic College" style="width: 58px; height: 58px; object-fit: contain;">
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 14px;">
+                <img src="${pccLogoUrl}" alt="Pasig Catholic College" style="width: 58px; height: 58px; object-fit: contain; flex-shrink: 0; margin-top: 2px;">
                 <div style="flex: 1;">
                     <div style="font-size: 14px; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase;">
                         Pasig Catholic College

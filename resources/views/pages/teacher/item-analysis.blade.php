@@ -516,8 +516,8 @@
 
     {{-- Institutional Print Header (Shown only during Print / PDF generation) --}}
     <div class="ia-print-header">
-        <div style="display:flex; align-items:center; gap:16px; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:14px;">
-            <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="Pasig Catholic College" style="width:68px; height:68px; object-fit:contain;">
+        <div style="display:flex; align-items:flex-start; gap:16px; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:14px;">
+            <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="Pasig Catholic College" style="width:68px; height:68px; object-fit:contain; flex-shrink:0; margin-top:2px;">
             <div style="flex:1;">
                 <div style="font-size:15px; font-weight:800; color:#0f172a; letter-spacing:0.5px; text-transform:uppercase;">
                     Pasig Catholic College
