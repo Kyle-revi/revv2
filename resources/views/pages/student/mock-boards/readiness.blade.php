@@ -6,6 +6,13 @@
     ];
     $layout = $programLayoutMap[auth()->user()->program ?? ''] ?? 'layouts.appAcc';
 
+    $progMap = [
+        'psych' => 'BS Psychology',
+        'accountancy' => 'BS Accountancy',
+        'educ' => 'Bachelor of Secondary Education',
+    ];
+    $programFormatted = $progMap[strtolower($user->program ?? $mockBoard->program ?? '')] ?? strtoupper($user->program ?? $mockBoard->program ?? 'N/A');
+
     $summary = [
         'readiness_percentage' => (float) $report->readiness_percentage,
         'tier' => $report->tier,
@@ -43,6 +50,34 @@
 
 @section('content')
 <div class="readiness-page-wrapper">
+
+    {{-- INSTITUTIONAL PRINT HEADER (Displayed on Print / PDF only) --}}
+    <div class="readiness-print-header">
+        <div style="display:flex; align-items:center; gap:16px; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:16px;">
+            <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="Pasig Catholic College" style="width:68px; height:68px; object-fit:contain;">
+            <div style="flex:1;">
+                <div style="font-size:15px; font-weight:800; color:#0f172a; letter-spacing:0.5px; text-transform:uppercase;">
+                    Pasig Catholic College
+                </div>
+                <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; margin-bottom:2px;">
+                    College Department &bull; Licensure Examination Preparation & Diagnostic Center
+                </div>
+                <h1 style="font-size:15px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.3px; color:#0f172a;">
+                    Mock Board Licensure Readiness & Diagnostic Report
+                </h1>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">
+                    Comprehensive Predictive Passing Likelihood & Item-Level Competency Evaluation
+                </p>
+            </div>
+            <div style="text-align:right; font-size:11px; color:#334155; white-space:nowrap; line-height:1.4;">
+                <p style="margin:0;"><strong>Report Date:</strong> {{ $report->generated_at?->format('F d, Y h:i A') ?? now()->format('F d, Y h:i A') }}</p>
+                <p style="margin:2px 0 0 0;"><strong>Student Name:</strong> {{ $user->name }}</p>
+                <p style="margin:2px 0 0 0;"><strong>Student ID:</strong> {{ $user->idnumber ?? '—' }}</p>
+                <p style="margin:2px 0 0 0;"><strong>Program:</strong> {{ $programFormatted }}</p>
+                <p style="margin:2px 0 0 0;"><strong>Mock Board:</strong> {{ $mockBoard->title }}</p>
+            </div>
+        </div>
+    </div>
 
     {{-- REPORT HEADER --}}
     <div class="readiness-header-card">
@@ -464,6 +499,27 @@
         @else
             <p class="empty-state-text">Action plan is being prepared...</p>
         @endif
+    </div>
+
+    {{-- OFFICIAL ACADEMIC SIGNATURES (Printed on physical copy / PDF) --}}
+    <div class="readiness-print-signatures">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:36px; text-align:center; margin-top:32px; padding-top:16px;">
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">{{ $user->name }}</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Examinee / Student</p>
+            </div>
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">Board Review Coordinator</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Licensure Examination & Review Committee</p>
+            </div>
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">Dean of Academic Affairs</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">College Department</p>
+            </div>
+        </div>
     </div>
 
     {{-- REPORT FOOTER --}}
@@ -1239,6 +1295,13 @@
         margin: 0;
     }
 
+    .readiness-print-header {
+        display: none;
+    }
+    .readiness-print-signatures {
+        display: none;
+    }
+
     /* =========================================================
        PRINT STYLES FOR HIGH-QUALITY BROWSER PRINTING / PDF SAVE
        ========================================================= */
@@ -1277,7 +1340,22 @@
             margin: 0 !important;
         }
 
-        .readiness-header-card,
+        .readiness-header-card {
+            display: none !important;
+        }
+
+        .readiness-print-header {
+            display: block !important;
+            margin-bottom: 16px !important;
+        }
+
+        .readiness-print-signatures {
+            display: block !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            margin-top: 24px !important;
+        }
+
         .kpi-card,
         .card-box,
         .ai-plan-card,
@@ -1318,11 +1396,13 @@
 
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script>
+    const pccLogoUrl = @json(asset('assets/img/brand/pcc_logo.png'));
     const readinessExportData = {
         studentName: @json($user->name),
         studentId: @json($user->idnumber ?? '—'),
-        studentProgram: @json(strtoupper($user->program ?? $mockBoard->program ?? 'N/A')),
+        studentProgram: @json($programFormatted),
         boardTitle: @json($mockBoard->title),
         generatedAt: @json($report->generated_at?->format('F d, Y h:i A') ?? now()->format('F d, Y h:i A')),
         passingThreshold: @json((int) ($mockBoard->passing_percentage ?? 75)),
@@ -1339,67 +1419,503 @@
         domains: @json($domains['list'] ?? []),
         repeatedlyMissed: @json($itemInsights['repeatedly_missed_items'] ?? []),
         regressedItems: @json($itemInsights['regressed_items'] ?? []),
+        missedPostItems: @json($itemInsights['missed_post_items'] ?? []),
         aiPlan: @json($aiPlan),
     };
 
-    function exportReadinessToExcel() {
+    async function exportReadinessToExcel() {
+        const d = readinessExportData;
+        const cleanStudent = (d.studentName || 'Student').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const cleanBoard = (d.boardTitle || 'MockBoard').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const filename = 'Readiness_Report_' + cleanStudent + '_' + cleanBoard + '_' + dateStr + '.xlsx';
+
+        // -------------------------------------------------------------
+        // 1. Primary: Use ExcelJS for Native Seal Embedding & Pro Design
+        // -------------------------------------------------------------
+        if (typeof ExcelJS !== 'undefined') {
+            try {
+                const wb = new ExcelJS.Workbook();
+                wb.creator = 'Pasig Catholic College';
+                wb.created = new Date();
+
+                let imageId = null;
+                try {
+                    const imgRes = await fetch(pccLogoUrl);
+                    if (imgRes.ok) {
+                        const imgBuffer = await imgRes.arrayBuffer();
+                        imageId = wb.addImage({
+                            buffer: imgBuffer,
+                            extension: 'png'
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Could not load logo image for Excel embed:', e);
+                }
+
+                function addSheetHeader(ws, subTitle, maxColLetter = 'D') {
+                    ws.getRow(1).height = 24;
+                    ws.getRow(2).height = 18;
+                    ws.getRow(3).height = 20;
+
+                    if (imageId !== null) {
+                        ws.addImage(imageId, {
+                            tl: { col: 0.15, row: 0.15 },
+                            ext: { width: 58, height: 58 }
+                        });
+                    }
+
+                    ws.getCell('B1').value = 'PASIG CATHOLIC COLLEGE';
+                    ws.getCell('B1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
+                    ws.mergeCells('B1:' + maxColLetter + '1');
+
+                    ws.getCell('B2').value = 'College Department • Licensure Examination Preparation & Diagnostic Center';
+                    ws.getCell('B2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+                    ws.mergeCells('B2:' + maxColLetter + '2');
+
+                    ws.getCell('B3').value = subTitle;
+                    ws.getCell('B3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF245E55' } };
+                    ws.mergeCells('B3:' + maxColLetter + '3');
+                }
+
+                function styleTableHeader(row, bgColor = 'FF245E55') {
+                    row.height = 24;
+                    row.eachCell((cell) => {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: bgColor }
+                        };
+                        cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
+                        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                        cell.border = {
+                            top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                            bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                            right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                        };
+                    });
+                }
+
+                function styleDataRow(row, isEven = false) {
+                    row.eachCell((cell) => {
+                        cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF1E293B' } };
+                        cell.alignment = { vertical: 'top', wrapText: true };
+                        if (isEven) {
+                            cell.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'FFF8FAFC' }
+                            };
+                        }
+                        cell.border = {
+                            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+                        };
+                    });
+                }
+
+                // ---------------------------------------------------------
+                // Sheet 1: Readiness Summary
+                // ---------------------------------------------------------
+                const wsSum = wb.addWorksheet('Readiness Summary');
+                addSheetHeader(wsSum, 'MOCK BOARD STUDENT READINESS & PASSING LIKELIHOOD REPORT', 'D');
+
+                const meta = [
+                    ['Report Generated At', d.generatedAt],
+                    ['Student Name', d.studentName],
+                    ['Student ID Number', d.studentId],
+                    ['Academic Program', d.studentProgram],
+                    ['Mock Board Title', d.boardTitle],
+                    ['Passing Benchmark Standard', d.passingThreshold + '% Passing Grade'],
+                ];
+
+                let curRow = 5;
+                meta.forEach(([k, v]) => {
+                    const r = wsSum.getRow(curRow);
+                    r.getCell(1).value = k;
+                    r.getCell(1).font = { bold: true, color: { argb: 'FF475569' } };
+                    r.getCell(2).value = v;
+                    r.getCell(2).font = { bold: true, color: { argb: 'FF0F172A' } };
+                    wsSum.mergeCells('B' + curRow + ':D' + curRow);
+                    curRow++;
+                });
+
+                curRow += 1;
+                const sec1H = wsSum.getRow(curRow++);
+                sec1H.getCell(1).value = '=== 1. READINESS & PASSING LIKELIHOOD INDICATORS ===';
+                sec1H.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF245E55' } };
+                wsSum.mergeCells('A' + (curRow - 1) + ':D' + (curRow - 1));
+
+                const th1 = wsSum.getRow(curRow++);
+                th1.getCell(1).value = 'Metric / Indicator';
+                th1.getCell(2).value = 'Score / Value';
+                th1.getCell(3).value = 'Remarks & Diagnostic Assessment';
+                styleTableHeader(th1);
+                wsSum.mergeCells('C' + (curRow - 1) + ':D' + (curRow - 1));
+
+                const kpis = [
+                    ['Board Exam Passing Likelihood', d.tierLabel, 'Current predictive licensure exam likelihood: ' + d.tierDescription],
+                    ['Readiness Score (Best Post-Test)', d.readinessScore + '%', d.tierLabel],
+                    ['PRC Passing Standard Benchmark', d.passingThreshold + '%', d.readinessScore >= d.passingThreshold ? 'Passing Mark Met (Passed)' : 'Below Passing Benchmark'],
+                    ['Gap to Pass Benchmark', d.gapPercentage + '%', d.gapPercentage > 0 ? 'Need ~' + d.gapItems + ' more correct items to pass' : 'Passing threshold met'],
+                    ['Diagnostic Pre-Test Score', (d.preTestScore !== null ? d.preTestScore + '%' : 'N/A'), 'Baseline diagnostic score before post-test'],
+                    ['Score Improvement (Gain)', (d.improvementPercentage !== null ? (d.improvementPercentage >= 0 ? '+' : '') + d.improvementPercentage + '%' : 'N/A'), 'Growth rate from diagnostic pre-test'],
+                    ['Performance Consistency', d.consistencyStatus, 'Score stability across attempts']
+                ];
+
+                kpis.forEach(([m, s, rem], idx) => {
+                    const row = wsSum.getRow(curRow++);
+                    row.getCell(1).value = m;
+                    row.getCell(2).value = s;
+                    row.getCell(3).value = rem;
+                    styleDataRow(row, idx % 2 === 1);
+                    wsSum.mergeCells('C' + (curRow - 1) + ':D' + (curRow - 1));
+                });
+
+                if (d.peer && Object.keys(d.peer).length > 0) {
+                    curRow += 1;
+                    const sec2H = wsSum.getRow(curRow++);
+                    sec2H.getCell(1).value = '=== 2. PEER & COHORT BENCHMARK ===';
+                    sec2H.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF245E55' } };
+                    wsSum.mergeCells('A' + (curRow - 1) + ':D' + (curRow - 1));
+
+                    const th2 = wsSum.getRow(curRow++);
+                    th2.getCell(1).value = 'Metric / Indicator';
+                    th2.getCell(2).value = 'Value';
+                    th2.getCell(3).value = 'Standing Description';
+                    styleTableHeader(th2);
+                    wsSum.mergeCells('C' + (curRow - 1) + ':D' + (curRow - 1));
+
+                    const peerRows = [
+                        ['Batch Examinees Count', d.peer.cohort_size || 0, 'Total examinees in cohort'],
+                        ['Batch Average Score', (d.peer.batch_average || 0) + '%', 'Overall cohort average'],
+                        ['Your Score vs Batch Average', ((d.peer.score_diff_from_batch || 0) >= 0 ? '+' : '') + (d.peer.score_diff_from_batch || 0) + '%', (d.peer.score_diff_from_batch || 0) >= 0 ? 'Above cohort average' : 'Below cohort average'],
+                        ['Percentile Rank', (d.peer.percentile_rank || 0) + 'th Percentile', 'Higher than ' + (d.peer.higher_than_percentage || 0) + '% of batch examinees']
+                    ];
+                    peerRows.forEach(([m, v, desc], idx) => {
+                        const row = wsSum.getRow(curRow++);
+                        row.getCell(1).value = m;
+                        row.getCell(2).value = v;
+                        row.getCell(3).value = desc;
+                        styleDataRow(row, idx % 2 === 1);
+                        wsSum.mergeCells('C' + (curRow - 1) + ':D' + (curRow - 1));
+                    });
+                }
+
+                if (d.hist && Object.keys(d.hist).length > 0) {
+                    curRow += 1;
+                    const sec3H = wsSum.getRow(curRow++);
+                    sec3H.getCell(1).value = '=== 3. HISTORICAL LICENSURE BENCHMARK ===';
+                    sec3H.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF245E55' } };
+                    wsSum.mergeCells('A' + (curRow - 1) + ':D' + (curRow - 1));
+
+                    const th3 = wsSum.getRow(curRow++);
+                    th3.getCell(1).value = 'Metric / Indicator';
+                    th3.getCell(2).value = 'Value';
+                    th3.getCell(3).value = 'Remarks';
+                    styleTableHeader(th3);
+                    wsSum.mergeCells('C' + (curRow - 1) + ':D' + (curRow - 1));
+
+                    const histRows = [
+                        ['Exam Benchmark Reference', d.hist.exam_label || 'PRC Licensure Exam', d.hist.exam_period_or_year || 'N/A'],
+                        ['National Historical Passing Rate', (d.hist.national_passing_rate || 0) + '%', 'Official PRC national benchmark'],
+                        ['Current Batch Passing Rate', (d.hist.batch_passing_rate || 0) + '%', 'Batch pass rate in this mock board']
+                    ];
+                    histRows.forEach(([m, v, rem], idx) => {
+                        const row = wsSum.getRow(curRow++);
+                        row.getCell(1).value = m;
+                        row.getCell(2).value = v;
+                        row.getCell(3).value = rem;
+                        styleDataRow(row, idx % 2 === 1);
+                        wsSum.mergeCells('C' + (curRow - 1) + ':D' + (curRow - 1));
+                    });
+                }
+
+                wsSum.columns = [
+                    { width: 36 },
+                    { width: 24 },
+                    { width: 35 },
+                    { width: 35 }
+                ];
+
+                // ---------------------------------------------------------
+                // Sheet 2: Domain Mastery
+                // ---------------------------------------------------------
+                const wsDom = wb.addWorksheet('Domain Mastery');
+                addSheetHeader(wsDom, 'DOMAIN & SUBJECT MASTERY BREAKDOWN', 'H');
+
+                let dRow = 5;
+                wsDom.getCell('A' + dRow).value = 'Mock Board:';
+                wsDom.getCell('A' + dRow).font = { bold: true };
+                wsDom.getCell('B' + dRow).value = d.boardTitle;
+                dRow++;
+                wsDom.getCell('A' + dRow).value = 'Student:';
+                wsDom.getCell('A' + dRow).font = { bold: true };
+                wsDom.getCell('B' + dRow).value = d.studentName + ' (' + d.studentProgram + ')';
+                dRow++;
+                wsDom.getCell('A' + dRow).value = 'Exported At:';
+                wsDom.getCell('A' + dRow).font = { bold: true };
+                wsDom.getCell('B' + dRow).value = d.generatedAt;
+                dRow += 2;
+
+                const thDom = wsDom.getRow(dRow++);
+                const domCols = ['#', 'Domain / Subject Area', 'Pre-Test Score', 'Post-Test Score', 'Score Gain', 'Correct Items', 'Total Items', 'Mastery Status'];
+                domCols.forEach((col, idx) => {
+                    thDom.getCell(idx + 1).value = col;
+                });
+                styleTableHeader(thDom);
+
+                if (d.domains && d.domains.length > 0) {
+                    d.domains.forEach((item, idx) => {
+                        const row = wsDom.getRow(dRow++);
+                        row.getCell(1).value = idx + 1;
+                        row.getCell(2).value = item.domain || 'General';
+                        row.getCell(3).value = item.pre_score !== null && item.pre_score !== undefined ? item.pre_score + '%' : 'N/A';
+                        row.getCell(4).value = (item.post_score !== null && item.post_score !== undefined ? item.post_score : 0) + '%';
+                        row.getCell(5).value = item.change !== null && item.change !== undefined ? ((item.change >= 0 ? '+' : '') + item.change + '%') : 'N/A';
+                        row.getCell(6).value = item.correct_items || 0;
+                        row.getCell(7).value = item.total_items || 0;
+                        row.getCell(8).value = item.status || 'Developing';
+                        styleDataRow(row, idx % 2 === 1);
+                    });
+                } else {
+                    const row = wsDom.getRow(dRow++);
+                    row.getCell(1).value = '—';
+                    row.getCell(2).value = 'No domain breakdown data available';
+                    styleDataRow(row);
+                }
+
+                wsDom.columns = [
+                    { width: 6 },
+                    { width: 34 },
+                    { width: 16 },
+                    { width: 16 },
+                    { width: 16 },
+                    { width: 15 },
+                    { width: 14 },
+                    { width: 22 }
+                ];
+
+                // ---------------------------------------------------------
+                // Sheet 3: Item Analysis & Conceptual Gaps
+                // ---------------------------------------------------------
+                const wsGaps = wb.addWorksheet('Item Analysis & Gaps');
+                addSheetHeader(wsGaps, 'HIGH-YIELD ITEM & CONCEPTUAL GAPS ANALYSIS', 'D');
+
+                let gRow = 5;
+                wsGaps.getCell('A' + gRow).value = 'Mock Board:';
+                wsGaps.getCell('A' + gRow).font = { bold: true };
+                wsGaps.getCell('B' + gRow).value = d.boardTitle;
+                gRow++;
+                wsGaps.getCell('A' + gRow).value = 'Student:';
+                wsGaps.getCell('A' + gRow).font = { bold: true };
+                wsGaps.getCell('B' + gRow).value = d.studentName + ' (' + d.studentProgram + ')';
+                gRow++;
+                wsGaps.getCell('A' + gRow).value = 'Exported At:';
+                wsGaps.getCell('A' + gRow).font = { bold: true };
+                wsGaps.getCell('B' + gRow).value = d.generatedAt;
+                gRow += 2;
+
+                const thGaps = wsGaps.getRow(gRow++);
+                thGaps.getCell(1).value = 'Category / Gap Type';
+                thGaps.getCell(2).value = 'Domain / Subject';
+                thGaps.getCell(3).value = 'Question Concept / Stem';
+                thGaps.getCell(4).value = 'Detailed Explanation & Core Principle';
+                styleTableHeader(thGaps);
+
+                let hasGapsFound = false;
+                let gapIndex = 0;
+
+                if (d.repeatedlyMissed && d.repeatedlyMissed.length > 0) {
+                    d.repeatedlyMissed.forEach((item) => {
+                        hasGapsFound = true;
+                        const row = wsGaps.getRow(gRow++);
+                        row.getCell(1).value = 'Repeatedly Missed (Pre & Post)';
+                        row.getCell(2).value = item.domain || 'General';
+                        row.getCell(3).value = item.stem || '—';
+                        row.getCell(4).value = item.explanation || '—';
+                        styleDataRow(row, gapIndex++ % 2 === 1);
+                    });
+                }
+
+                if (d.regressedItems && d.regressedItems.length > 0) {
+                    d.regressedItems.forEach((item) => {
+                        hasGapsFound = true;
+                        const row = wsGaps.getRow(gRow++);
+                        row.getCell(1).value = 'Regressed Item (Passed Pre, Failed Post)';
+                        row.getCell(2).value = item.domain || 'General';
+                        row.getCell(3).value = item.stem || '—';
+                        row.getCell(4).value = item.explanation || '—';
+                        styleDataRow(row, gapIndex++ % 2 === 1);
+                    });
+                }
+
+                if (d.missedPostItems && d.missedPostItems.length > 0) {
+                    d.missedPostItems.forEach((item) => {
+                        hasGapsFound = true;
+                        const row = wsGaps.getRow(gRow++);
+                        row.getCell(1).value = 'Incorrect Mock Board Question';
+                        row.getCell(2).value = item.domain || 'General';
+                        row.getCell(3).value = item.stem || '—';
+                        row.getCell(4).value = item.explanation || 'Review core principle and rationalization.';
+                        styleDataRow(row, gapIndex++ % 2 === 1);
+                    });
+                }
+
+                if (!hasGapsFound) {
+                    const row = wsGaps.getRow(gRow++);
+                    if (d.readinessScore >= d.passingThreshold) {
+                        row.getCell(1).value = 'No Critical Gaps';
+                        row.getCell(2).value = 'All Domains';
+                        row.getCell(3).value = 'Passing threshold achieved with solid competency retention across tested domains';
+                        row.getCell(4).value = 'Solid retention across tested items';
+                    } else {
+                        row.getCell(1).value = 'Remediation Required (Score: ' + Math.round(d.readinessScore) + '%)';
+                        row.getCell(2).value = 'Core Licensure Domains';
+                        row.getCell(3).value = 'Score is below the ' + d.passingThreshold + '% passing mark (~' + d.gapItems + ' more correct items needed to pass)';
+                        row.getCell(4).value = 'Targeted remediation and domain drill practice advised before taking the actual PRC examination.';
+                    }
+                    styleDataRow(row);
+                }
+
+                wsGaps.columns = [
+                    { width: 34 },
+                    { width: 28 },
+                    { width: 50 },
+                    { width: 65 }
+                ];
+
+                // ---------------------------------------------------------
+                // Sheet 4: Action Plan & Recommendations
+                // ---------------------------------------------------------
+                const wsPlan = wb.addWorksheet('Action Plan & Directives');
+                addSheetHeader(wsPlan, 'PERSONALIZED ACTION PLAN & STUDY DIRECTIVES', 'B');
+
+                let pRow = 5;
+                wsPlan.getCell('A' + pRow).value = 'Mock Board:';
+                wsPlan.getCell('A' + pRow).font = { bold: true };
+                wsPlan.getCell('B' + pRow).value = d.boardTitle;
+                pRow++;
+                wsPlan.getCell('A' + pRow).value = 'Student:';
+                wsPlan.getCell('A' + pRow).font = { bold: true };
+                wsPlan.getCell('B' + pRow).value = d.studentName + ' (' + d.studentProgram + ')';
+                pRow++;
+                wsPlan.getCell('A' + pRow).value = 'Exported At:';
+                wsPlan.getCell('A' + pRow).font = { bold: true };
+                wsPlan.getCell('B' + pRow).value = d.generatedAt;
+                pRow += 2;
+
+                const thPlan = wsPlan.getRow(pRow++);
+                thPlan.getCell(1).value = 'Section / Dimension';
+                thPlan.getCell(2).value = 'Diagnostic Guidance & Action Items';
+                styleTableHeader(thPlan);
+
+                const plan = d.aiPlan || {};
+                let pIdx = 0;
+                if (plan.summary_narrative) {
+                    const row = wsPlan.getRow(pRow++);
+                    row.getCell(1).value = 'Readiness Summary Narrative';
+                    row.getCell(2).value = plan.summary_narrative;
+                    styleDataRow(row, pIdx++ % 2 === 1);
+                }
+                if (plan.priority_domains && plan.priority_domains.length > 0) {
+                    const row = wsPlan.getRow(pRow++);
+                    row.getCell(1).value = 'Priority Focus Domains';
+                    row.getCell(2).value = plan.priority_domains.join(', ');
+                    styleDataRow(row, pIdx++ % 2 === 1);
+                }
+                if (plan.review_topics && plan.review_topics.length > 0) {
+                    const row = wsPlan.getRow(pRow++);
+                    row.getCell(1).value = 'Specific Concepts to Revisit';
+                    row.getCell(2).value = plan.review_topics.join(' | ');
+                    styleDataRow(row, pIdx++ % 2 === 1);
+                }
+
+                pRow++;
+                const secStepH = wsPlan.getRow(pRow++);
+                secStepH.getCell(1).value = 'STEP-BY-STEP STUDY SEQUENCE';
+                secStepH.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF245E55' } };
+                wsPlan.mergeCells('A' + (pRow - 1) + ':B' + (pRow - 1));
+
+                const thSteps = wsPlan.getRow(pRow++);
+                thSteps.getCell(1).value = 'Sequence Step';
+                thSteps.getCell(2).value = 'Prescribed Action Item';
+                styleTableHeader(thSteps);
+
+                if (plan.study_steps && plan.study_steps.length > 0) {
+                    plan.study_steps.forEach((step, idx) => {
+                        const row = wsPlan.getRow(pRow++);
+                        row.getCell(1).value = 'Step ' + (idx + 1);
+                        row.getCell(2).value = step.replace(/^\d+\.\s*/, '');
+                        styleDataRow(row, idx % 2 === 1);
+                    });
+                } else {
+                    const row = wsPlan.getRow(pRow++);
+                    row.getCell(1).value = 'Step 1';
+                    row.getCell(2).value = 'Review core formulas, standards, and lecture handouts before your next mock board attempt.';
+                    styleDataRow(row);
+                }
+
+                wsPlan.columns = [
+                    { width: 28 },
+                    { width: 85 }
+                ];
+
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                return;
+            } catch (err) {
+                console.error('ExcelJS export failed, falling back to SheetJS/CSV:', err);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 2. Fallback: SheetJS (XLSX)
+        // -------------------------------------------------------------
         if (typeof XLSX === 'undefined') {
             window.location.href = "{{ route('student.mock-boards.readiness.export', $mockBoard) }}";
             return;
         }
 
-        const d = readinessExportData;
         const wb = XLSX.utils.book_new();
 
-        // -------------------------------------------------------------
         // Sheet 1: Readiness Summary
-        // -------------------------------------------------------------
         const summaryRows = [
-            ['REVISO - MOCK BOARD STUDENT READINESS REPORT'],
+            ['PASIG CATHOLIC COLLEGE'],
+            ['College Department • Licensure Examination Preparation & Diagnostic Center'],
+            ['MOCK BOARD STUDENT READINESS & PASSING LIKELIHOOD REPORT'],
             ['Report Generated At', d.generatedAt],
             ['Student Name', d.studentName],
             ['Student ID Number', d.studentId],
             ['Academic Program', d.studentProgram],
-            ['Mock Board Examination', d.boardTitle],
-            ['Passing Standard Benchmark', d.passingThreshold + '%'],
+            ['Mock Board Title', d.boardTitle],
+            ['Passing Benchmark Standard', d.passingThreshold + '% Passing Grade'],
             [],
-            ['1. READINESS KPI SUMMARY', '', ''],
+            ['=== 1. READINESS & PASSING LIKELIHOOD INDICATORS ===', '', ''],
             ['Metric / Indicator', 'Score / Value', 'Remarks & Diagnostic Assessment'],
-            [
-                'Board Readiness Score (Best Post-Test)',
-                d.readinessScore + '%',
-                d.tierLabel + ' (' + d.tierDescription + ')'
-            ],
-            [
-                'Benchmark Passing Standard',
-                d.passingThreshold + '%',
-                (d.readinessScore >= d.passingThreshold ? 'Target Met (Passed)' : 'Below Benchmark')
-            ],
-            [
-                'Gap to Pass Benchmark',
-                d.gapPercentage + '%',
-                (d.gapPercentage > 0 ? 'Need ~' + d.gapItems + ' more correct items to pass' : 'Threshold achieved')
-            ],
-            [
-                'Diagnostic Pre-Test Score',
-                (d.preTestScore !== null ? d.preTestScore + '%' : 'N/A'),
-                'Baseline diagnostic score before post-test'
-            ],
-            [
-                'Overall Score Improvement (Gain)',
-                (d.improvementPercentage !== null ? (d.improvementPercentage >= 0 ? '+' : '') + d.improvementPercentage + '%' : 'N/A'),
-                'Diagnostic-to-post-test growth rate'
-            ],
-            [
-                'Performance Consistency',
-                d.consistencyStatus,
-                'Post-test score stability across attempts'
-            ],
+            ['Board Exam Passing Likelihood', d.tierLabel, 'Current predictive licensure exam likelihood: ' + d.tierDescription],
+            ['Readiness Score (Best Post-Test)', d.readinessScore + '%', d.tierLabel],
+            ['PRC Passing Standard Benchmark', d.passingThreshold + '%', (d.readinessScore >= d.passingThreshold ? 'Passing Mark Met (Passed)' : 'Below Passing Benchmark')],
+            ['Gap to Pass Benchmark', d.gapPercentage + '%', (d.gapPercentage > 0 ? 'Need ~' + d.gapItems + ' more correct items to pass' : 'Passing threshold met')],
+            ['Diagnostic Pre-Test Score', (d.preTestScore !== null ? d.preTestScore + '%' : 'N/A'), 'Baseline diagnostic score before post-test'],
+            ['Score Improvement (Gain)', (d.improvementPercentage !== null ? (d.improvementPercentage >= 0 ? '+' : '') + d.improvementPercentage + '%' : 'N/A'), 'Growth rate from diagnostic pre-test'],
+            ['Performance Consistency', d.consistencyStatus, 'Score stability across attempts'],
         ];
 
         if (d.peer && Object.keys(d.peer).length > 0) {
             summaryRows.push([]);
-            summaryRows.push(['2. PEER & COHORT BENCHMARK', '', '']);
+            summaryRows.push(['=== 2. PEER & COHORT BENCHMARK ===', '', '']);
             summaryRows.push(['Metric / Indicator', 'Value', 'Standing Description']);
             summaryRows.push(['Batch Examinees Count', d.peer.cohort_size || 0, 'Total examinees in cohort']);
             summaryRows.push(['Batch Average Score', (d.peer.batch_average || 0) + '%', 'Overall cohort average']);
@@ -1417,7 +1933,7 @@
 
         if (d.hist && Object.keys(d.hist).length > 0) {
             summaryRows.push([]);
-            summaryRows.push(['3. HISTORICAL LICENSURE BENCHMARK', '', '']);
+            summaryRows.push(['=== 3. HISTORICAL LICENSURE BENCHMARK ===', '', '']);
             summaryRows.push(['Metric / Indicator', 'Value', 'Remarks']);
             summaryRows.push(['Exam Benchmark Reference', d.hist.exam_label || 'PRC Licensure Exam', d.hist.exam_period_or_year || 'N/A']);
             summaryRows.push(['National Historical Passing Rate', (d.hist.national_passing_rate || 0) + '%', 'Official PRC national benchmark']);
@@ -1427,18 +1943,17 @@
         const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
         wsSummary['!cols'] = [
             { wch: 38 },
-            { wch: 22 },
+            { wch: 24 },
             { wch: 55 }
         ];
         XLSX.utils.book_append_sheet(wb, wsSummary, 'Readiness Summary');
 
-        // -------------------------------------------------------------
         // Sheet 2: Domain Mastery
-        // -------------------------------------------------------------
         const domainRows = [
+            ['PASIG CATHOLIC COLLEGE'],
             ['DOMAIN & SUBJECT MASTERY BREAKDOWN'],
             ['Mock Board:', d.boardTitle],
-            ['Student Name:', d.studentName],
+            ['Student Name:', d.studentName + ' (' + d.studentProgram + ')'],
             ['Exported At:', d.generatedAt],
             [],
             ['#', 'Domain / Subject Area', 'Pre-Test Score', 'Post-Test Score', 'Score Gain', 'Correct Items', 'Total Items', 'Mastery Status']
@@ -1474,16 +1989,15 @@
         ];
         XLSX.utils.book_append_sheet(wb, wsDomain, 'Domain Mastery');
 
-        // -------------------------------------------------------------
         // Sheet 3: Item Analysis & Conceptual Gaps
-        // -------------------------------------------------------------
         const gapsRows = [
+            ['PASIG CATHOLIC COLLEGE'],
             ['HIGH-YIELD ITEM & CONCEPTUAL GAPS ANALYSIS'],
             ['Mock Board:', d.boardTitle],
-            ['Student Name:', d.studentName],
+            ['Student Name:', d.studentName + ' (' + d.studentProgram + ')'],
             ['Exported At:', d.generatedAt],
             [],
-            ['Gap Type', 'Domain / Subject', 'Question Concept / Stem', 'Detailed Explanation & Core Principle']
+            ['Category / Gap Type', 'Domain / Subject', 'Question Concept / Stem', 'Detailed Explanation & Core Principle']
         ];
 
         let hasGaps = false;
@@ -1491,7 +2005,7 @@
             hasGaps = true;
             d.repeatedlyMissed.forEach(function(item) {
                 gapsRows.push([
-                    'Repeatedly Missed',
+                    'Repeatedly Missed (Pre & Post)',
                     item.domain || 'General',
                     item.stem || '—',
                     item.explanation || '—'
@@ -1503,7 +2017,7 @@
             hasGaps = true;
             d.regressedItems.forEach(function(item) {
                 gapsRows.push([
-                    'Regressed Item (Passed Pre, Missed Post)',
+                    'Regressed Item (Passed Pre, Failed Post)',
                     item.domain || 'General',
                     item.stem || '—',
                     item.explanation || '—'
@@ -1511,8 +2025,24 @@
             });
         }
 
+        if (d.missedPostItems && d.missedPostItems.length > 0) {
+            hasGaps = true;
+            d.missedPostItems.forEach(function(item) {
+                gapsRows.push([
+                    'Incorrect Mock Board Question',
+                    item.domain || 'General',
+                    item.stem || '—',
+                    item.explanation || 'Review core principle and rationalization.'
+                ]);
+            });
+        }
+
         if (!hasGaps) {
-            gapsRows.push(['No Critical Gaps', 'All Domains', 'No repeated errors or regressions recorded between Pre-Test and Post-Test', 'Solid retention across tested items']);
+            if (d.readinessScore >= d.passingThreshold) {
+                gapsRows.push(['No Critical Gaps', 'All Domains', 'Passing threshold achieved with solid competency retention across tested domains', 'Solid retention across tested items']);
+            } else {
+                gapsRows.push(['Remediation Required (Score: ' + Math.round(d.readinessScore) + '%)', 'Core Licensure Domains', 'Score is below the ' + d.passingThreshold + '% passing mark (~' + d.gapItems + ' more correct items needed to pass)', 'Targeted remediation and domain drill practice advised before taking the actual PRC examination.']);
+            }
         }
 
         const wsGaps = XLSX.utils.aoa_to_sheet(gapsRows);
@@ -1524,13 +2054,12 @@
         ];
         XLSX.utils.book_append_sheet(wb, wsGaps, 'Item Analysis & Gaps');
 
-        // -------------------------------------------------------------
         // Sheet 4: Action Plan & Recommendations
-        // -------------------------------------------------------------
         const planRows = [
-            ['PERSONALIZED ACTION PLAN & STUDY RECOMMENDATIONS'],
+            ['PASIG CATHOLIC COLLEGE'],
+            ['PERSONALIZED ACTION PLAN & STUDY DIRECTIVES'],
             ['Mock Board:', d.boardTitle],
-            ['Student Name:', d.studentName],
+            ['Student Name:', d.studentName + ' (' + d.studentProgram + ')'],
             ['Exported At:', d.generatedAt],
             [],
             ['Section', 'Details & Recommendations']
@@ -1548,12 +2077,12 @@
         }
 
         planRows.push([]);
-        planRows.push(['STEP-BY-STEP STUDY DIRECTIVES', '']);
+        planRows.push(['STEP-BY-STEP STUDY SEQUENCE', '']);
         planRows.push(['Step #', 'Action Item']);
 
         if (plan.study_steps && plan.study_steps.length > 0) {
             plan.study_steps.forEach(function(step, idx) {
-                planRows.push(['Step ' + (idx + 1), step]);
+                planRows.push(['Step ' + (idx + 1), step.replace(/^\d+\.\s*/, '')]);
             });
         } else {
             planRows.push(['Step 1', 'Review core formulas, standards, and lecture handouts before your next mock board attempt.']);
@@ -1565,14 +2094,6 @@
             { wch: 80 }
         ];
         XLSX.utils.book_append_sheet(wb, wsPlan, 'Action Plan & Recommendations');
-
-        // -------------------------------------------------------------
-        // Download generated .xlsx file
-        // -------------------------------------------------------------
-        const cleanStudent = (d.studentName || 'Student').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const cleanBoard = (d.boardTitle || 'MockBoard').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const dateStr = new Date().toISOString().slice(0, 10);
-        const filename = 'Readiness_Report_' + cleanStudent + '_' + cleanBoard + '_' + dateStr + '.xlsx';
 
         XLSX.writeFile(wb, filename);
     }

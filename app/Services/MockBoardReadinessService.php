@@ -323,7 +323,7 @@ class MockBoardReadinessService
                     'domain' => ! empty($question->domain) ? trim($question->domain) : 'General',
                     'explanation' => ! empty($question->explanation) ? Str::limit(trim($question->explanation), 120) : null,
                 ];
-                if (count($missedPostItems) < 6) {
+                if (count($missedPostItems) < 20) {
                     $missedPostItems[] = $itemData;
                 }
             }
@@ -766,23 +766,33 @@ class MockBoardReadinessService
             fwrite($handle, "\xEF\xBB\xBF");
 
             // Header Section
-            fputcsv($handle, ['REVISO - MOCK BOARD STUDENT READINESS REPORT']);
+            $progMap = [
+                'psych' => 'BS Psychology',
+                'accountancy' => 'BS Accountancy',
+                'educ' => 'Bachelor of Secondary Education',
+            ];
+            $programFormatted = $progMap[strtolower($user->program ?? $mockBoard->program ?? '')] ?? strtoupper($user->program ?? $mockBoard->program ?? 'N/A');
+
+            fputcsv($handle, ['PASIG CATHOLIC COLLEGE']);
+            fputcsv($handle, ['College Department • Licensure Examination Preparation & Diagnostic Center']);
+            fputcsv($handle, ['REVISO - MOCK BOARD STUDENT READINESS REPORT & PASSING LIKELIHOOD']);
             fputcsv($handle, ['Report Generated At', $report->generated_at?->format('F d, Y h:i A') ?? now()->format('F d, Y h:i A')]);
             fputcsv($handle, ['Student Name', $user->name]);
-            fputcsv($handle, ['Student Program', strtoupper($user->program ?? $mockBoard->program ?? 'N/A')]);
+            fputcsv($handle, ['Student ID Number', $user->idnumber ?? '—']);
+            fputcsv($handle, ['Academic Program', $programFormatted]);
             fputcsv($handle, ['Mock Board Title', $mockBoard->title]);
-            fputcsv($handle, ['Passing Benchmark', ($mockBoard->passing_percentage ?? 75).'%']);
+            fputcsv($handle, ['Passing Benchmark Standard', ($mockBoard->passing_percentage ?? 75).'%']);
             fputcsv($handle, []);
 
             // Summary Section
-            fputcsv($handle, ['=== 1. READINESS KPI SUMMARY ===']);
-            fputcsv($handle, ['Metric / Indicator', 'Score / Value', 'Remarks']);
+            fputcsv($handle, ['=== 1. READINESS & PASSING LIKELIHOOD INDICATORS ===']);
+            fputcsv($handle, ['Metric / Indicator', 'Score / Value', 'Remarks & Diagnostic Assessment']);
+            fputcsv($handle, ['Board Exam Passing Likelihood', $report->tier_label, 'Current predictive licensure exam likelihood']);
             fputcsv($handle, ['Readiness Score (Best Post-Test)', $report->readiness_percentage.'%', $report->tier_label]);
-            fputcsv($handle, ['Likelihood Tier', $report->tier_label, 'Current readiness status']);
-            fputcsv($handle, ['Gap to Pass Percentage', $report->gap_percentage.'%', 'Needed to reach passing threshold']);
-            fputcsv($handle, ['Estimated Items Needed to Pass', $report->gap_items, 'Questions needed']);
-            fputcsv($handle, ['Diagnostic Pre-Test Score', $report->pre_test_score.'%', 'Baseline score']);
-            fputcsv($handle, ['Score Improvement (Gain)', ($report->improvement_percentage >= 0 ? '+' : '').$report->improvement_percentage.'%', 'Gain from Pre-Test']);
+            fputcsv($handle, ['PRC Passing Standard Benchmark', ($mockBoard->passing_percentage ?? 75).'%', $report->readiness_percentage >= ($mockBoard->passing_percentage ?? 75) ? 'Passing Mark Met' : 'Below Passing Benchmark']);
+            fputcsv($handle, ['Gap to Pass Benchmark', $report->gap_percentage.'%', $report->gap_percentage > 0 ? 'Need ~'.$report->gap_items.' more correct items to pass' : 'Passing threshold met']);
+            fputcsv($handle, ['Diagnostic Pre-Test Score', ($report->pre_test_score !== null ? $report->pre_test_score.'%' : 'N/A'), 'Baseline diagnostic score']);
+            fputcsv($handle, ['Score Improvement (Gain)', ($report->improvement_percentage !== null ? ($report->improvement_percentage >= 0 ? '+' : '').$report->improvement_percentage.'%' : 'N/A'), 'Growth rate from pre-test']);
             fputcsv($handle, ['Performance Consistency', $report->consistency_status, 'Score stability across attempts']);
             fputcsv($handle, []);
 
@@ -829,18 +839,31 @@ class MockBoardReadinessService
             fputcsv($handle, []);
 
             // Item-Level Analysis
-            if (! empty($report->item_insights)) {
-                fputcsv($handle, ['=== 5. HIGH-YIELD ITEM & CONCEPTUAL GAPS ===']);
-                fputcsv($handle, ['Category', 'Domain', 'Question Concept Stem', 'Explanation']);
+            fputcsv($handle, ['=== 5. HIGH-YIELD ITEM & CONCEPTUAL GAPS ===']);
+            fputcsv($handle, ['Category', 'Domain', 'Question Concept Stem', 'Explanation']);
 
-                foreach ($report->item_insights['repeatedly_missed_items'] ?? [] as $item) {
-                    fputcsv($handle, ['Repeatedly Missed', $item['domain'], $item['stem'], $item['explanation'] ?? '']);
-                }
-                foreach ($report->item_insights['regressed_items'] ?? [] as $item) {
-                    fputcsv($handle, ['Regressed Item', $item['domain'], $item['stem'], $item['explanation'] ?? '']);
-                }
-                fputcsv($handle, []);
+            $hasCsvGaps = false;
+            foreach ($report->item_insights['repeatedly_missed_items'] ?? [] as $item) {
+                $hasCsvGaps = true;
+                fputcsv($handle, ['Repeatedly Missed', $item['domain'], $item['stem'], $item['explanation'] ?? '']);
             }
+            foreach ($report->item_insights['regressed_items'] ?? [] as $item) {
+                $hasCsvGaps = true;
+                fputcsv($handle, ['Regressed Item', $item['domain'], $item['stem'], $item['explanation'] ?? '']);
+            }
+            foreach ($report->item_insights['missed_post_items'] ?? [] as $item) {
+                $hasCsvGaps = true;
+                fputcsv($handle, ['Incorrect Mock Board Question', $item['domain'], $item['stem'], $item['explanation'] ?? 'Review core principle and rationalization.']);
+            }
+
+            if (! $hasCsvGaps) {
+                if ((float) $report->readiness_percentage >= (float) ($mockBoard->passing_percentage ?? 75)) {
+                    fputcsv($handle, ['No Critical Gaps', 'All Domains', 'Passing threshold achieved with solid competency retention', 'Solid retention across tested items']);
+                } else {
+                    fputcsv($handle, ['Remediation Required (Score: '.(int) round($report->readiness_percentage).'%)', 'Core Licensure Domains', 'Score is below the '.($mockBoard->passing_percentage ?? 75).'% passing mark (~'.$report->gap_items.' more correct items needed to pass)', 'Targeted remediation and domain drill practice advised before taking the actual PRC examination.']);
+                }
+            }
+            fputcsv($handle, []);
 
             // AI Action Plan
             if (! empty($report->ai_action_plan)) {
