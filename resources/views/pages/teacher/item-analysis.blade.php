@@ -9,6 +9,9 @@
             <i class="fas fa-arrow-left"></i> Back to Class Performance
         </a>
     @endif
+    <button type="button" class="rv-btn rv-btn-secondary" onclick="window.print()" title="Print or Save Official Examination Quality Report as PDF">
+        <i class="fas fa-print"></i> Print Report (PDF)
+    </button>
     <button type="button" class="rv-btn rv-btn-primary" id="btnRecalculateAnalysis" onclick="triggerRecalculate()">
         <i class="fas fa-sync-alt" id="recalculateIcon"></i> Recalculate Analysis
     </button>
@@ -419,9 +422,119 @@
     .ia-modal-dialog b {
         font-weight: 500;
     }
+
+    .ia-print-header,
+    .ia-print-signatures {
+        display: none;
+    }
+
+    @media print {
+        @page {
+            size: landscape;
+            margin: 10mm 12mm;
+        }
+        body {
+            background: #fff !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .rv-sidebar, .rv-topbar, .rv-header-actions, .rv-btn, .ia-stage-tabs,
+        #diagnosticModalBackdrop, #btnRecalculateAnalysis, .sp-refresh-btn,
+        .ia-card-header input, .ia-card-header select {
+            display: none !important;
+        }
+        .rv-main {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .rv-content {
+            padding: 0 !important;
+        }
+        .ia-wrapper {
+            max-width: 100% !important;
+            gap: 12px !important;
+        }
+        .ia-print-header {
+            display: block !important;
+        }
+        .ia-print-signatures {
+            display: block !important;
+            page-break-inside: avoid;
+        }
+        .ia-header-info {
+            display: none !important;
+        }
+        .ia-kpi-card, .ia-summary-card, .ia-card {
+            box-shadow: none !important;
+            border: 1px solid #cbd5e1 !important;
+            page-break-inside: avoid;
+        }
+        .ia-kpi-grid {
+            grid-template-columns: repeat(6, 1fr) !important;
+            gap: 8px !important;
+        }
+        .ia-kpi-card {
+            padding: 10px 12px !important;
+        }
+        .ia-kpi-val {
+            font-size: 20px !important;
+        }
+        .ia-kpi-label {
+            font-size: 10px !important;
+            margin-bottom: 2px !important;
+        }
+        .ia-kpi-sub {
+            font-size: 10px !important;
+            margin-top: 2px !important;
+        }
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+        th, td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 6px 8px !important;
+            font-size: 8.5pt !important;
+        }
+        th {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        .ia-table tr {
+            page-break-inside: avoid;
+        }
+        /* Hide inspect column on print */
+        .ia-table th:last-child,
+        .ia-table td:last-child {
+            display: none !important;
+        }
+    }
 </style>
 
 <div class="ia-wrapper">
+
+    {{-- Institutional Print Header (Shown only during Print / PDF generation) --}}
+    <div class="ia-print-header">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:14px;">
+            <div>
+                <h1 style="font-size:18px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.5px; color:#0f172a;">
+                    Examination Quality & Psychometric Validation Report
+                </h1>
+                <p style="font-size:12px; color:#475569; margin:3px 0 0 0;">
+                    Classical Test Theory (CTT) Diagnostic, Item Calibration, & Generative Question Verification
+                </p>
+            </div>
+            <div style="text-align:right; font-size:11.5px; color:#334155;">
+                <p style="margin:0;"><strong>Report Date:</strong> {{ now()->format('F d, Y h:i A') }}</p>
+                <p style="margin:2px 0 0 0;"><strong>Module / Assessment:</strong> {{ $module->title }}</p>
+                @if($class)
+                    <p style="margin:2px 0 0 0;"><strong>Class:</strong> {{ $class->name }} ({{ $class->code }})</p>
+                @endif
+                <p style="margin:2px 0 0 0;"><strong>Stage:</strong> {{ strtoupper($currentStage ?: 'Pre-Assessment') }}</p>
+            </div>
+        </div>
+    </div>
 
     {{-- Breadcrumb & Title Bar --}}
     <div class="ia-header-info">
@@ -779,6 +892,27 @@
                 </table>
             </div>
         @endif
+    </div>
+
+    {{-- Official Academic Signatures (Printed on physical copy / PDF) --}}
+    <div class="ia-print-signatures">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:36px; text-align:center; margin-top:32px; padding-top:16px;">
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">{{ Auth::user()->name ?? 'Subject Instructor' }}</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Exam Author / Subject Instructor</p>
+            </div>
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">Department Chairperson</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Psychometric Reviewer / Quality Assurance</p>
+            </div>
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">Dean of Academic Affairs</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Institutional Academic Approval</p>
+            </div>
+        </div>
     </div>
 
 </div>

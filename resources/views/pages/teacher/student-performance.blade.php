@@ -799,6 +799,9 @@
                     <button type="button" class="sp-export-btn" onclick="exportPerformanceToExcel('quiz')" title="Download Excel (.xlsx)">
                         <i class="fas fa-file-excel"></i> Export Excel
                     </button>
+                    <button type="button" class="sp-export-btn" onclick="printClassPerformance('quiz')" title="Print or Save Official Class Performance Report as PDF" style="background:#0f172a; color:#fff; border-color:#0f172a;">
+                        <i class="fas fa-print"></i> Print Report (PDF)
+                    </button>
                 </div>
             </div>
             <div id="quizStudentsTableWrap">
@@ -933,6 +936,9 @@
                     <button type="button" class="sp-export-btn" onclick="exportPerformanceToExcel('assessment')" title="Download Excel (.xlsx)">
                         <i class="fas fa-file-excel"></i> Export Excel
                     </button>
+                    <button type="button" class="sp-export-btn" onclick="printClassPerformance('assessment')" title="Print or Save Official Assessment Performance Report as PDF" style="background:#0f172a; color:#fff; border-color:#0f172a;">
+                        <i class="fas fa-print"></i> Print Report (PDF)
+                    </button>
                 </div>
             </div>
             <div id="assessStudentsTableWrap">
@@ -1015,9 +1021,14 @@
                 <span style="font-size: 17px;color:#999;" id="iaAttemptLabel">-</span>
             </div>
         </div>
-        <button class="ia-dialog-close" onclick="document.getElementById('itemAnalysisDialog').close()">
-            &#x2715;
-        </button>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" class="sp-refresh-btn" onclick="printStudentDiagnosticSlip()" title="Print Individual Student Diagnostic Slip (PDF)" style="gap:6px; background:#0f172a; color:#fff; border-color:#0f172a; height:32px; padding:0 12px; font-size:12.5px;">
+                <i class="fas fa-print"></i> Print Diagnostic Slip
+            </button>
+            <button class="ia-dialog-close" onclick="document.getElementById('itemAnalysisDialog').close()">
+                &#x2715;
+            </button>
+        </div>
     </div>
 
     {{-- Attempt Limit / Grant Extra Attempt (formal assessments only) --}}
@@ -1092,6 +1103,7 @@ var assessPassFailChart = null;
 var currentAssessPassCount = {{ $aPassCount }};
 var currentAssessFailCount = {{ $aFailCount }};
 var currentAssessPassingGrade = {{ $aPassingGrade }};
+var currentDialogStudentData = null;
 
 /* Question breakdown chart state */
 var questionChart = null;
@@ -2074,6 +2086,14 @@ async function openItemAnalysis(studentId, studentName, isAssessment) {
         scorePill.className   = 'sp-score-pill ' + scoreClass(pct);
         attemptLbl.textContent= `Attempt #${data.attempt.id} - ${total} questions`;
 
+        currentDialogStudentData = {
+            studentId: studentId,
+            studentName: safeName,
+            isAssessment: isAssessment,
+            attempt: data.attempt,
+            answers: answers
+        };
+
         // Attempt limit / grant control (formal assessments only)
         renderAttemptLimitBox(data.attempt, studentId);
 
@@ -2445,6 +2465,358 @@ function exportPerformanceToExcel(type) {
     var filename = 'Performance_' + sanitizedClass + '_' + sanitizedTab + '_' + dateStr + '.xlsx';
 
     XLSX.writeFile(wb, filename);
+}
+
+/* Print / Save Official Class Performance Report (PDF) */
+function printClassPerformance(type) {
+    var isQuiz = (type === 'quiz');
+    var students = isQuiz ? (quizStudentsState.items || []) : (assessStudentsState.items || []);
+    var questions = isQuiz ? (currentQuestionStats || []) : (currentAssessQuestionStats || []);
+    
+    var subtitleEl = document.getElementById(isQuiz ? 'spSubtitle' : 'spAssessSubtitle');
+    var className = subtitleEl ? subtitleEl.textContent.split(' - ')[0].trim() : 'Class';
+    var activeTabName = isQuiz ? 'Pre-Assessment' : 'Formal Assessment';
+    
+    var selectEl = document.getElementById(isQuiz ? 'quizModuleSelect' : 'assessModuleSelect');
+    var selectedModuleName = selectEl && selectEl.options[selectEl.selectedIndex] ? selectEl.options[selectEl.selectedIndex].text : 'All Modules / Topics';
+
+    var avgEl = document.getElementById(isQuiz ? 'classAverageValue' : 'assessClassAverageValue');
+    var classAvg = avgEl ? avgEl.textContent.trim() + '%' : '0%';
+    var passCount = isQuiz ? currentPassCount : currentAssessPassCount;
+    var failCount = isQuiz ? currentFailCount : currentAssessFailCount;
+    var totalAttempts = passCount + failCount;
+    var passRate = totalAttempts > 0 ? ((passCount / totalAttempts) * 100).toFixed(1) + '%' : '0%';
+    var passingThreshold = isQuiz ? currentPassingGrade : currentAssessPassingGrade;
+    var dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+
+    var printWin = window.open('', '_blank', 'width=1100,height=850');
+    if (!printWin) {
+        alert('Please allow pop-ups to print the report.');
+        return;
+    }
+
+    var studentsHtml = students.map(function(st, idx) {
+        var avg = Number(st.average_score || 0);
+        var isPassed = (st.has_passed !== undefined && st.has_passed !== null)
+            ? Boolean(Number(st.has_passed))
+            : (avg >= passingThreshold);
+        var raw = (st.raw_score !== undefined && st.raw_score !== null && st.total_score)
+            ? (st.raw_score + ' / ' + st.total_score)
+            : '—';
+        var statusColor = isPassed ? '#15803d' : '#b91c1c';
+        return `
+            <tr>
+                <td style="text-align:center;">${idx + 1}</td>
+                <td><strong>${escapeHtml(st.idnumber || '—')}</strong></td>
+                <td>${escapeHtml(st.name || '—')}</td>
+                <td>${escapeHtml(formatProgramName(st.program))}</td>
+                <td style="text-align:center;">${raw}</td>
+                <td style="text-align:right;">${avg.toFixed(1)}%</td>
+                <td style="text-align:center; color:${statusColor}; font-weight:700;">${isPassed ? 'Passed' : 'Failed'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    var questionsHtml = '';
+    if (questions && questions.length > 0) {
+        var qRows = questions.map(function(q, i) {
+            var pct = Number(q.pct_correct || 0);
+            var difficulty = pct >= 70 ? 'High' : (pct >= 40 ? 'Moderate' : 'Low');
+            var diffColor = pct >= 70 ? '#15803d' : (pct >= 40 ? '#b45309' : '#b91c1c');
+            var qText = q.question_text ? decodeAndStripHtml(q.question_text) : '—';
+            return `
+                <tr>
+                    <td style="text-align:center;">Q${i + 1}</td>
+                    <td>${escapeHtml(qText)}</td>
+                    <td style="text-align:center;">${q.correct_count || 0}</td>
+                    <td style="text-align:center;">${q.total_answers || 0}</td>
+                    <td style="text-align:right; font-weight:600;">${pct.toFixed(1)}%</td>
+                    <td style="text-align:center; color:${diffColor}; font-weight:600;">${difficulty}</td>
+                </tr>
+            `;
+        }).join('');
+
+        questionsHtml = `
+            <div style="margin-top:30px; page-break-before:auto;">
+                <h3 style="font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:#0f172a; margin-bottom:8px; border-bottom:1.5px solid #cbd5e1; padding-bottom:4px;">
+                    Question Item Accuracy Breakdown (${questions.length} Items Analyzed)
+                </h3>
+                <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                    <thead>
+                        <tr style="background:#f1f5f9; text-align:left;">
+                            <th style="padding:6px 8px; border:1px solid #cbd5e1; width:45px; text-align:center;">#</th>
+                            <th style="padding:6px 8px; border:1px solid #cbd5e1;">Question Stem</th>
+                            <th style="padding:6px 8px; border:1px solid #cbd5e1; width:75px; text-align:center;">Correct</th>
+                            <th style="padding:6px 8px; border:1px solid #cbd5e1; width:75px; text-align:center;">Attempts</th>
+                            <th style="padding:6px 8px; border:1px solid #cbd5e1; width:85px; text-align:right;">Accuracy</th>
+                            <th style="padding:6px 8px; border:1px solid #cbd5e1; width:80px; text-align:center;">Difficulty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${qRows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    var html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Class Performance Report - ${escapeHtml(className)}</title>
+            <style>
+                @page { size: portrait; margin: 12mm 15mm; }
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; font-size: 12px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; }
+                th { background: #f8fafc; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.03em; }
+                .kpi-box { border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; background: #f8fafc; }
+                .kpi-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+                .kpi-val { font-size: 20px; font-weight: 700; color: #0f172a; }
+                @media print {
+                    body { padding: 0; }
+                    .no-print { display: none !important; }
+                    tr { page-break-inside: avoid; }
+                }
+            </style>
+        </head>
+        <body>
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1 style="font-size: 18px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Institutional Class Performance Report</h1>
+                    <p style="font-size: 12px; color: #475569; margin: 3px 0 0 0;">Official Assessment Masterlist, Student Rankings, and Item Breakdown</p>
+                </div>
+                <div style="text-align: right; font-size: 11px; color: #475569;">
+                    <p style="margin: 0;"><strong>Date:</strong> ${dateStr}</p>
+                    <p style="margin: 2px 0 0 0;"><strong>Class:</strong> ${escapeHtml(className)}</p>
+                    <p style="margin: 2px 0 0 0;"><strong>Type:</strong> ${escapeHtml(activeTabName)}</p>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                <div class="kpi-box">
+                    <div class="kpi-label">Class Average</div>
+                    <div class="kpi-val">${classAvg}</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">Pass Rate</div>
+                    <div class="kpi-val">${passRate}</div>
+                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">${passCount} Passed, ${failCount} Failed</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">Total Examinees</div>
+                    <div class="kpi-val">${students.length}</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">Passing Standard</div>
+                    <div class="kpi-val">${passingThreshold}%</div>
+                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Target Passing Grade</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 8px; font-size: 11.5px; color: #334155;">
+                <strong>Module / Topic Scope:</strong> ${escapeHtml(selectedModuleName)}
+            </div>
+
+            <h3 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; margin: 14px 0 8px 0; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 4px;">
+                Student Performance & Rankings
+            </h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;">Rank</th>
+                        <th style="width: 90px;">Student ID</th>
+                        <th>Student Name</th>
+                        <th style="width: 140px;">Degree Program</th>
+                        <th style="width: 80px; text-align: center;">Raw Score</th>
+                        <th style="width: 85px; text-align: right;">Percentage</th>
+                        <th style="width: 80px; text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${studentsHtml}
+                </tbody>
+            </table>
+
+            ${questionsHtml}
+
+            <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; text-align: center; page-break-inside: avoid;">
+                <div>
+                    <div style="border-bottom: 1.5px solid #0f172a; height: 40px; margin-bottom: 6px;"></div>
+                    <p style="font-size: 11px; font-weight: 700; margin: 0;">Subject Instructor</p>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Evaluator / Examiner</p>
+                </div>
+                <div>
+                    <div style="border-bottom: 1.5px solid #0f172a; height: 40px; margin-bottom: 6px;"></div>
+                    <p style="font-size: 11px; font-weight: 700; margin: 0;">Department Chairperson</p>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Verified & Noted</p>
+                </div>
+                <div>
+                    <div style="border-bottom: 1.5px solid #0f172a; height: 40px; margin-bottom: 6px;"></div>
+                    <p style="font-size: 11px; font-weight: 700; margin: 0;">College Dean</p>
+                    <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Institutional Approval</p>
+                </div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            <\/script>
+        </body>
+        </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+}
+
+/* Print Individual Student Diagnostic Slip (PDF) */
+function printStudentDiagnosticSlip() {
+    if (!currentDialogStudentData || !currentDialogStudentData.attempt) {
+        alert('No attempt data loaded to print.');
+        return;
+    }
+
+    var st = currentDialogStudentData;
+    var att = st.attempt;
+    var answers = st.answers || [];
+    var correct = answers.filter(a => Number(a.is_correct) === 1).length;
+    var wrong = answers.length - correct;
+    var total = answers.length;
+    var pct = Number(att.percentage || 0);
+
+    var subtitleEl = document.getElementById(st.isAssessment ? 'spAssessSubtitle' : 'spSubtitle');
+    var className = subtitleEl ? subtitleEl.textContent.split(' - ')[0].trim() : 'Class';
+    var passingThreshold = st.isAssessment ? currentAssessPassingGrade : currentPassingGrade;
+    var isPassed = (att.passed !== undefined && att.passed !== null) ? Boolean(att.passed) : (pct >= passingThreshold);
+    var dateStr = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
+
+    var printWin = window.open('', '_blank', 'width=900,height=800');
+    if (!printWin) {
+        alert('Please allow pop-ups to print the diagnostic slip.');
+        return;
+    }
+
+    var answersHtml = answers.map(function(a, idx) {
+        var ok = Number(a.is_correct) === 1;
+        var qText = String(a.question_text || '').replace(/<[^>]+>/g, '');
+        var selected = a.selected_option || '—';
+        var correctKey = a.correct_option || '—';
+        var statusColor = ok ? '#15803d' : '#b91c1c';
+        return `
+            <div style="border-bottom:1px solid #e2e8f0; padding:8px 0; font-size:11px; page-break-inside:avoid;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+                    <strong style="color:#0f172a;">Item #${idx + 1}</strong>
+                    <span style="color:${statusColor}; font-weight:700;">${ok ? 'CORRECT' : 'INCORRECT'}</span>
+                </div>
+                <div style="color:#334155; margin-bottom:4px;">${escapeHtml(qText)}</div>
+                <div style="display:flex; gap:16px; font-size:10.5px; color:#64748b;">
+                    <span>Student's Choice: <strong style="color:${statusColor};">${escapeHtml(selected)}</strong></span>
+                    ${!ok ? `<span style="color:#15803d;">Correct Key: <strong>${escapeHtml(correctKey)}</strong></span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    var aiDiagnosticSection = '';
+    if (att.ai_strong || att.ai_weak || att.ai_recommendation) {
+        aiDiagnosticSection = `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:16px; page-break-inside:avoid;">
+                <h4 style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#0f172a; margin:0 0 8px 0;">
+                    AI Competency Diagnostic & Remediation Guide
+                </h4>
+                ${att.ai_strong ? `<p style="margin:0 0 4px 0; font-size:11px;"><strong>Mastered Competencies:</strong> <span style="color:#15803d;">${escapeHtml(att.ai_strong)}</span></p>` : ''}
+                ${att.ai_weak ? `<p style="margin:0 0 4px 0; font-size:11px;"><strong>Identified Weak Topics:</strong> <span style="color:#b91c1c;">${escapeHtml(att.ai_weak)}</span></p>` : ''}
+                ${att.ai_recommendation ? `<p style="margin:0; font-size:11px;"><strong>Study Action Plan:</strong> <span style="color:#0369a1;">${escapeHtml(att.ai_recommendation)}</span></p>` : ''}
+            </div>
+        `;
+    }
+
+    var html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Diagnostic Slip - ${escapeHtml(st.studentName)}</title>
+            <style>
+                @page { size: portrait; margin: 15mm; }
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 16px; font-size: 12px; }
+                @media print { body { padding: 0; } }
+            </style>
+        </head>
+        <body>
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h2 style="font-size: 16px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Student Assessment Diagnostic Slip</h2>
+                    <p style="font-size: 11px; color: #475569; margin: 2px 0 0 0;">Official Academic Advising & Performance Evaluation Record</p>
+                </div>
+                <div style="text-align: right; font-size: 10.5px; color: #475569;">
+                    <p style="margin: 0;"><strong>Date:</strong> ${dateStr}</p>
+                    <p style="margin: 1px 0 0 0;"><strong>Class:</strong> ${escapeHtml(className)}</p>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px;">
+                <div>
+                    <div style="font-size: 9px; text-transform: uppercase; color: #64748b;">Examinee</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a;">${escapeHtml(st.studentName)}</div>
+                </div>
+                <div>
+                    <div style="font-size: 9px; text-transform: uppercase; color: #64748b;">Score</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a;">${correct}/${total}</div>
+                </div>
+                <div>
+                    <div style="font-size: 9px; text-transform: uppercase; color: #64748b;">Percentage</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a;">${pct.toFixed(1)}%</div>
+                </div>
+                <div>
+                    <div style="font-size: 9px; text-transform: uppercase; color: #64748b;">Passing Mark</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a;">${passingThreshold}%</div>
+                </div>
+                <div>
+                    <div style="font-size: 9px; text-transform: uppercase; color: #64748b;">Result</div>
+                    <div style="font-size: 13px; font-weight: 700; color: ${isPassed ? '#15803d' : '#b91c1c'};">${isPassed ? 'PASSED' : 'FAILED'}</div>
+                </div>
+            </div>
+
+            ${aiDiagnosticSection}
+
+            <h4 style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin: 12px 0 6px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px;">
+                Item Breakdown (${total} Questions)
+            </h4>
+            <div style="margin-bottom: 24px;">
+                ${answersHtml}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; text-align: center; page-break-inside: avoid;">
+                <div>
+                    <div style="border-bottom: 1px solid #0f172a; height: 35px; margin-bottom: 4px;"></div>
+                    <p style="font-size: 11px; font-weight: 600; margin: 0;">Subject Instructor / Evaluator</p>
+                    <p style="font-size: 9.5px; color: #64748b; margin: 1px 0 0 0;">Signature Over Printed Name</p>
+                </div>
+                <div>
+                    <div style="border-bottom: 1px solid #0f172a; height: 35px; margin-bottom: 4px;"></div>
+                    <p style="font-size: 11px; font-weight: 600; margin: 0;">Student Acknowledgment</p>
+                    <p style="font-size: 9.5px; color: #64748b; margin: 1px 0 0 0;">Signature Over Printed Name</p>
+                </div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            <\/script>
+        </body>
+        </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
 }
 </script>
 @endsection
