@@ -653,6 +653,7 @@
     $classAverage   = (float) ($payload['classAverage'] ?? 0);
     $passCount      = (int) ($payload['passCount'] ?? 0);
     $failCount      = (int) ($payload['failCount'] ?? 0);
+    $passingGrade   = (int) ($payload['passingGrade'] ?? 75);
     $questionStats  = collect($payload['questionStats'] ?? collect());
     $topStudents    = collect($payload['topStudents'] ?? collect());
     $remainingCount = (int) ($payload['remainingCount'] ?? 0);
@@ -666,6 +667,7 @@
     $aClassAverage   = (float) ($assessPayload['classAverage'] ?? 0);
     $aPassCount      = (int) ($assessPayload['passCount'] ?? 0);
     $aFailCount      = (int) ($assessPayload['failCount'] ?? 0);
+    $aPassingGrade   = (int) ($assessPayload['passingGrade'] ?? 75);
     $aQuestionStats  = collect($assessPayload['questionStats'] ?? []);
     $aTopStudents    = collect($assessPayload['topStudents'] ?? []);
     $aRemainingCount = (int) ($assessPayload['remainingCount'] ?? 0);
@@ -1085,9 +1087,11 @@ var currentQuizModuleId = @json($selectedQuizModuleId ?? 'all');
 var currentAssessModuleId = @json($selectedAssessModuleId ?? 'all');
 var currentPassCount = {{ $passCount }};
 var currentFailCount = {{ $failCount }};
+var currentPassingGrade = {{ $passingGrade }};
 var assessPassFailChart = null;
 var currentAssessPassCount = {{ $aPassCount }};
 var currentAssessFailCount = {{ $aFailCount }};
+var currentAssessPassingGrade = {{ $aPassingGrade }};
 
 /* Question breakdown chart state */
 var questionChart = null;
@@ -1177,6 +1181,9 @@ async function fetchAndUpdatePerformance(targetTab) {
         if (targetTab === 'quiz' || !targetTab) {
             currentPassCount = Number(payload.passCount || 0);
             currentFailCount = Number(payload.failCount || 0);
+            if (payload.passingGrade !== undefined) {
+                currentPassingGrade = Number(payload.passingGrade || 75);
+            }
             var avgV = Number(payload.classAverage || 0);
             var avgEl = document.getElementById('classAverageValue');
             if (avgEl) {
@@ -1193,6 +1200,9 @@ async function fetchAndUpdatePerformance(targetTab) {
             if (payload.assessment) {
                 currentAssessPassCount = Number(payload.assessment.passCount || 0);
                 currentAssessFailCount = Number(payload.assessment.failCount || 0);
+                if (payload.assessment.passingGrade !== undefined) {
+                    currentAssessPassingGrade = Number(payload.assessment.passingGrade || 75);
+                }
                 var aAvgV = Number(payload.assessment.classAverage || 0);
                 var aAvgEl = document.getElementById('assessClassAverageValue');
                 if (aAvgEl) {
@@ -1929,6 +1939,9 @@ document.querySelectorAll('.js-class-tab').forEach(function (tab) {
             currentAssessModuleId = 'all';
             currentPassCount = Number(payload.passCount || 0);
             currentFailCount = Number(payload.failCount || 0);
+            if (payload.passingGrade !== undefined) {
+                currentPassingGrade = Number(payload.passingGrade || 75);
+            }
             document.getElementById('spSubtitle').textContent = `${payload.class.name} - pre-assessment results and question breakdown.`;
             var avgV = Number(payload.classAverage || 0);
             var avgEl = document.getElementById('classAverageValue');
@@ -1959,6 +1972,9 @@ document.querySelectorAll('.js-class-tab').forEach(function (tab) {
                 populateModuleSelect('assessModuleSelect', payload.assessment.formalAssessmentModules || [], 'All Formal Assessments (Class Overview)');
                 currentAssessPassCount = Number(payload.assessment.passCount || 0);
                 currentAssessFailCount = Number(payload.assessment.failCount || 0);
+                if (payload.assessment.passingGrade !== undefined) {
+                    currentAssessPassingGrade = Number(payload.assessment.passingGrade || 75);
+                }
                 var aAvgV = Number(payload.assessment.classAverage || 0);
                 var aAvgEl = document.getElementById('assessClassAverageValue');
                 if (aAvgEl) {
@@ -2274,6 +2290,15 @@ async function submitAssessBaseLimit() {
     }
 }
 
+function formatProgramName(prog) {
+    if (!prog) return '—';
+    var p = String(prog).toLowerCase().trim();
+    if (p === 'psych') return 'BS Psychology';
+    if (p === 'accountancy' || p === 'acc' || p === 'bsa') return 'BS Accountancy';
+    if (p === 'educ') return 'BS Education';
+    return prog.toUpperCase();
+}
+
 /* Export to Excel (.xlsx) */
 function exportPerformanceToExcel(type) {
     if (typeof XLSX === 'undefined') {
@@ -2298,57 +2323,81 @@ function exportPerformanceToExcel(type) {
     var failCount = isQuiz ? currentFailCount : currentAssessFailCount;
     var totalAttempts = passCount + failCount;
     var passRate = totalAttempts > 0 ? ((passCount / totalAttempts) * 100).toFixed(1) + '%' : '0%';
+    var passingThreshold = isQuiz ? currentPassingGrade : currentAssessPassingGrade;
 
     var wb = XLSX.utils.book_new();
 
     // 1. Student Rankings Sheet Data
     var studentRows = [
-        ['CLASS PERFORMANCE REPORT'],
-        ['Class:', className],
-        ['Assessment Type:', activeTabName],
-        ['Module / Filter:', selectedModuleName],
-        ['Class Average:', classAvg],
-        ['Pass Rate:', passRate + ' (' + passCount + ' Passed, ' + failCount + ' Failed)'],
-        ['Total Students Recorded:', students.length],
-        ['Exported On:', new Date().toLocaleString()],
+        ['CLASS PERFORMANCE REPORT', '', '', '', '', '', ''],
+        ['Class:', '', className, '', '', '', ''],
+        ['Assessment Type:', '', activeTabName, '', '', '', ''],
+        ['Module / Filter:', '', selectedModuleName, '', '', '', ''],
+        ['Passing Standard:', '', passingThreshold + '% Passing Grade', '', '', '', ''],
+        ['Class Average:', '', classAvg, '', '', '', ''],
+        ['Pass Rate:', '', passRate + ' (' + passCount + ' Passed, ' + failCount + ' Failed)', '', '', '', ''],
+        ['Total Students Recorded:', '', students.length, '', '', '', ''],
+        ['Exported On:', '', new Date().toLocaleString(), '', '', '', ''],
         [], // empty row separator
-        ['Rank', 'Student ID', 'Student Name', 'Program / Course', 'Average Score', 'Status']
+        ['Rank', 'Student ID', 'Student Name', 'Program / Course', 'Raw Score', 'Average Score', 'Status']
     ];
 
     students.forEach(function(student, index) {
         var avg = Number(student.average_score || 0);
+        var isPassed = (student.has_passed !== undefined && student.has_passed !== null)
+            ? Boolean(Number(student.has_passed))
+            : (avg >= passingThreshold);
+        var rawScoreStr = (student.raw_score !== undefined && student.raw_score !== null && student.total_score)
+            ? (student.raw_score + ' / ' + student.total_score)
+            : '—';
         studentRows.push([
             index + 1,
             student.idnumber || '—',
             student.name || '—',
-            student.program || '—',
+            formatProgramName(student.program),
+            rawScoreStr,
             avg.toFixed(1) + '%',
-            avg >= 50 ? 'Passed' : 'Failed'
+            isPassed ? 'Passed' : 'Failed'
         ]);
     });
 
     var wsStudents = XLSX.utils.aoa_to_sheet(studentRows);
     
-    // Auto-fit column widths for students sheet
+    // Explicit column widths to ensure zero truncation across all columns
     wsStudents['!cols'] = [
-        { wch: 8 },  // Rank
+        { wch: 10 }, // Rank (#)
         { wch: 18 }, // Student ID
-        { wch: 30 }, // Student Name
-        { wch: 22 }, // Program
+        { wch: 32 }, // Student Name
+        { wch: 22 }, // Program / Course
+        { wch: 14 }, // Raw Score
         { wch: 16 }, // Average Score
-        { wch: 12 }  // Status
+        { wch: 14 }  // Status
     ];
+
+    // Merges for the summary header so labels (Col A+B, width 28) and values (Col C..G, width 98) never clip!
+    wsStudents['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // Title
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } }, { s: { r: 1, c: 2 }, e: { r: 1, c: 6 } }, // Class
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, { s: { r: 2, c: 2 }, e: { r: 2, c: 6 } }, // Assessment Type
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, { s: { r: 3, c: 2 }, e: { r: 3, c: 6 } }, // Module
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, { s: { r: 4, c: 2 }, e: { r: 4, c: 6 } }, // Passing Standard
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, { s: { r: 5, c: 2 }, e: { r: 5, c: 6 } }, // Class Average
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 1 } }, { s: { r: 6, c: 2 }, e: { r: 6, c: 6 } }, // Pass Rate
+        { s: { r: 7, c: 0 }, e: { r: 7, c: 1 } }, { s: { r: 7, c: 2 }, e: { r: 7, c: 6 } }, // Total Students
+        { s: { r: 8, c: 0 }, e: { r: 8, c: 1 } }, { s: { r: 8, c: 2 }, e: { r: 8, c: 6 } }  // Exported On
+    ];
+
     XLSX.utils.book_append_sheet(wb, wsStudents, 'Student Rankings');
 
     // 2. Question Breakdown / Item Analysis Sheet Data
     if (questions && questions.length > 0) {
         var questionRows = [
-            ['ITEM ANALYSIS (QUESTION BREAKDOWN)'],
-            ['Class:', className],
-            ['Assessment Type:', activeTabName],
-            ['Module / Filter:', selectedModuleName],
-            ['Total Questions Analyzed:', questions.length],
-            ['Exported On:', new Date().toLocaleString()],
+            ['ITEM ANALYSIS (QUESTION BREAKDOWN)', '', '', '', '', ''],
+            ['Class:', '', className, '', '', ''],
+            ['Assessment Type:', '', activeTabName, '', '', ''],
+            ['Module / Filter:', '', selectedModuleName, '', '', ''],
+            ['Total Questions Analyzed:', '', questions.length, '', '', ''],
+            ['Exported On:', '', new Date().toLocaleString(), '', '', ''],
             [], // empty row separator
             ['#', 'Question Text', 'Correct Answers', 'Total Attempts', 'Accuracy Rate', 'Difficulty Level']
         ];
@@ -2370,12 +2419,22 @@ function exportPerformanceToExcel(type) {
         var wsQuestions = XLSX.utils.aoa_to_sheet(questionRows);
         wsQuestions['!cols'] = [
             { wch: 8 },  // #
-            { wch: 60 }, // Question Text
-            { wch: 16 }, // Correct Answers
-            { wch: 16 }, // Total Attempts
-            { wch: 16 }, // Accuracy Rate
+            { wch: 65 }, // Question Text
+            { wch: 18 }, // Correct Answers
+            { wch: 18 }, // Total Attempts
+            { wch: 18 }, // Accuracy Rate
             { wch: 24 }  // Difficulty Level
         ];
+
+        wsQuestions['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Title
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } }, { s: { r: 1, c: 2 }, e: { r: 1, c: 5 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, { s: { r: 2, c: 2 }, e: { r: 2, c: 5 } },
+            { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, { s: { r: 3, c: 2 }, e: { r: 3, c: 5 } },
+            { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, { s: { r: 4, c: 2 }, e: { r: 4, c: 5 } },
+            { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, { s: { r: 5, c: 2 }, e: { r: 5, c: 5 } }
+        ];
+
         XLSX.utils.book_append_sheet(wb, wsQuestions, 'Question Item Analysis');
     }
 

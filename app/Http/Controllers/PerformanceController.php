@@ -45,6 +45,9 @@ class PerformanceController extends Controller
             }
         };
 
+        $selectedModule = $moduleId ? Module::find($moduleId) : null;
+        $passingGrade = $selectedModule ? ($selectedModule->passing_grade ?? 75) : 75;
+
         // Class Average (pre-assessment quizzes only)
         $classAverage = QuizAttempt::whereHas('module', $applyModuleScope)->avg('percentage') ?? 0;
 
@@ -52,7 +55,10 @@ class PerformanceController extends Controller
         $totalAttempts = QuizAttempt::whereHas('module', $applyModuleScope)->count();
 
         $passCount = QuizAttempt::whereHas('module', $applyModuleScope)
-            ->where('percentage', '>=', 50)->count();
+            ->where(function ($q) use ($passingGrade) {
+                $q->where('passed', true)
+                    ->orWhere('percentage', '>=', $passingGrade);
+            })->count();
 
         $failCount = $totalAttempts - $passCount;
 
@@ -89,7 +95,11 @@ class PerformanceController extends Controller
             'users.idnumber',
             'users.name',
             'users.program',
-            DB::raw('AVG(quiz_attempts.percentage) as average_score')
+            DB::raw('ROUND(AVG(quiz_attempts.percentage), 1) as average_score'),
+            DB::raw('MAX(quiz_attempts.score) as raw_score'),
+            DB::raw('MAX(quiz_attempts.total) as total_score'),
+            DB::raw('COUNT(quiz_attempts.id) as attempts_count'),
+            DB::raw('MAX(CASE WHEN quiz_attempts.passed = 1 OR quiz_attempts.percentage >= '.(int) $passingGrade.' THEN 1 ELSE 0 END) as has_passed')
         )
             ->join('quiz_attempts', 'users.id', '=', 'quiz_attempts.user_id')
             ->join('modules', 'quiz_attempts.module_id', '=', 'modules.id')
@@ -111,6 +121,7 @@ class PerformanceController extends Controller
 
         return [
             'selectedModuleId' => $moduleId,
+            'passingGrade' => (int) $passingGrade,
             'classAverage' => (float) $classAverage,
             'passCount' => (int) $passCount,
             'failCount' => (int) $failCount,
@@ -138,12 +149,18 @@ class PerformanceController extends Controller
             }
         };
 
+        $selectedModule = $moduleId ? Module::find($moduleId) : null;
+        $passingGrade = $selectedModule ? ($selectedModule->passing_grade ?? 75) : 75;
+
         $classAverage = QuizAttempt::whereHas('module', $applyModuleScope)->avg('percentage') ?? 0;
 
         $totalAttempts = QuizAttempt::whereHas('module', $applyModuleScope)->count();
 
         $passCount = QuizAttempt::whereHas('module', $applyModuleScope)
-            ->where('percentage', '>=', 50)->count();
+            ->where(function ($q) use ($passingGrade) {
+                $q->where('passed', true)
+                    ->orWhere('percentage', '>=', $passingGrade);
+            })->count();
 
         $failCount = $totalAttempts - $passCount;
 
@@ -178,7 +195,11 @@ class PerformanceController extends Controller
             'users.idnumber',
             'users.name',
             'users.program',
-            DB::raw('AVG(quiz_attempts.percentage) as average_score')
+            DB::raw('ROUND(AVG(quiz_attempts.percentage), 1) as average_score'),
+            DB::raw('MAX(quiz_attempts.score) as raw_score'),
+            DB::raw('MAX(quiz_attempts.total) as total_score'),
+            DB::raw('COUNT(quiz_attempts.id) as attempts_count'),
+            DB::raw('MAX(CASE WHEN quiz_attempts.passed = 1 OR quiz_attempts.percentage >= '.(int) $passingGrade.' THEN 1 ELSE 0 END) as has_passed')
         )
             ->join('quiz_attempts', 'users.id', '=', 'quiz_attempts.user_id')
             ->join('modules', 'quiz_attempts.module_id', '=', 'modules.id')
@@ -200,6 +221,7 @@ class PerformanceController extends Controller
 
         return [
             'selectedModuleId' => $moduleId,
+            'passingGrade' => (int) $passingGrade,
             'classAverage' => (float) $classAverage,
             'passCount' => (int) $passCount,
             'failCount' => (int) $failCount,
@@ -255,6 +277,7 @@ class PerformanceController extends Controller
                 'classAverage' => $payload['classAverage'],
                 'passCount' => $payload['passCount'],
                 'failCount' => $payload['failCount'],
+                'passingGrade' => $payload['passingGrade'] ?? 75,
                 'questionStats' => $payload['questionStats'],
                 'topStudents' => $payload['topStudents'],
                 'remainingCount' => $payload['remainingCount'],
@@ -266,6 +289,7 @@ class PerformanceController extends Controller
                     'classAverage' => $assessmentPayload['classAverage'],
                     'passCount' => $assessmentPayload['passCount'],
                     'failCount' => $assessmentPayload['failCount'],
+                    'passingGrade' => $assessmentPayload['passingGrade'] ?? 75,
                     'questionStats' => $assessmentPayload['questionStats'],
                     'topStudents' => $assessmentPayload['topStudents'],
                     'remainingCount' => $assessmentPayload['remainingCount'],
