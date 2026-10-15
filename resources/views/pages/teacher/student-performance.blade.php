@@ -1091,6 +1091,7 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script>
 var pccLogoUrl   = @json(asset('assets/img/brand/pcc_logo.png'));
 var passFailChart  = null;
@@ -2321,8 +2322,8 @@ function formatProgramName(prog) {
 }
 
 /* Export to Excel (.xlsx) */
-function exportPerformanceToExcel(type) {
-    if (typeof XLSX === 'undefined') {
+async function exportPerformanceToExcel(type) {
+    if (typeof XLSX === 'undefined' && typeof ExcelJS === 'undefined') {
         alert('Excel export library is still loading. Please try again in a moment.');
         return;
     }
@@ -2345,6 +2346,249 @@ function exportPerformanceToExcel(type) {
     var totalAttempts = passCount + failCount;
     var passRate = totalAttempts > 0 ? ((passCount / totalAttempts) * 100).toFixed(1) + '%' : '0%';
     var passingThreshold = isQuiz ? currentPassingGrade : currentAssessPassingGrade;
+
+    var sanitizedClass = className.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    var sanitizedTab = activeTabName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var filename = 'Performance_' + sanitizedClass + '_' + sanitizedTab + '_' + dateStr + '.xlsx';
+
+    // 1. Primary: Use ExcelJS for native PNG image embedding!
+    if (typeof ExcelJS !== 'undefined') {
+        try {
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'Pasig Catholic College';
+            wb.created = new Date();
+
+            let imageId = null;
+            try {
+                const imgRes = await fetch(pccLogoUrl);
+                if (imgRes.ok) {
+                    const imgBuffer = await imgRes.arrayBuffer();
+                    imageId = wb.addImage({
+                        buffer: imgBuffer,
+                        extension: 'png'
+                    });
+                }
+            } catch (e) {
+                console.warn('Could not load logo image for Excel embed:', e);
+            }
+
+            // Student Rankings Sheet
+            const wsStudents = wb.addWorksheet('Student Rankings');
+            wsStudents.getRow(1).height = 24;
+            wsStudents.getRow(2).height = 18;
+            wsStudents.getRow(3).height = 20;
+
+            if (imageId !== null) {
+                wsStudents.addImage(imageId, {
+                    tl: { col: 0.15, row: 0.15 },
+                    ext: { width: 62, height: 62 }
+                });
+            }
+
+            wsStudents.getCell('B1').value = 'PASIG CATHOLIC COLLEGE';
+            wsStudents.getCell('B1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
+            wsStudents.mergeCells('B1:G1');
+
+            wsStudents.getCell('B2').value = 'College Department • Academic Evaluation & Assessment Report';
+            wsStudents.getCell('B2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+            wsStudents.mergeCells('B2:G2');
+
+            wsStudents.getCell('B3').value = 'CLASS PERFORMANCE & STUDENT RANKING MASTERLIST';
+            wsStudents.getCell('B3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+            wsStudents.mergeCells('B3:G3');
+
+            const sMeta = [
+                ['Class:', className],
+                ['Assessment Type:', activeTabName],
+                ['Module / Filter:', selectedModuleName],
+                ['Passing Standard:', passingThreshold + '% Passing Grade'],
+                ['Class Average:', classAvg],
+                ['Pass Rate:', passRate + ' (' + passCount + ' Passed, ' + failCount + ' Failed)'],
+                ['Total Students Recorded:', String(students.length)],
+                ['Exported On:', new Date().toLocaleString()]
+            ];
+
+            let sr = 5;
+            sMeta.forEach(([k, v]) => {
+                wsStudents.getCell('A' + sr).value = k;
+                wsStudents.getCell('A' + sr).font = { bold: true };
+                wsStudents.mergeCells('A' + sr + ':B' + sr);
+
+                wsStudents.getCell('C' + sr).value = v;
+                wsStudents.mergeCells('C' + sr + ':G' + sr);
+                sr++;
+            });
+
+            sr++; // Empty row
+            const sHeaderRow = wsStudents.getRow(sr);
+            sHeaderRow.values = ['Rank', 'Student ID', 'Student Name', 'Program / Course', 'Raw Score', 'Average Score', 'Status'];
+            sHeaderRow.font = { bold: true };
+            sHeaderRow.eachCell((cell) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                cell.border = {
+                    top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                    bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                };
+            });
+
+            students.forEach(function(student, index) {
+                var avg = Number(student.average_score || 0);
+                var isPassed = (student.has_passed !== undefined && student.has_passed !== null)
+                    ? Boolean(Number(student.has_passed))
+                    : (avg >= passingThreshold);
+                var rawScoreStr = (student.raw_score !== undefined && student.raw_score !== null && student.total_score)
+                    ? (student.raw_score + ' / ' + student.total_score)
+                    : '—';
+                sr++;
+                const row = wsStudents.getRow(sr);
+                row.values = [
+                    index + 1,
+                    student.idnumber || '—',
+                    student.name || '—',
+                    formatProgramName(student.program),
+                    rawScoreStr,
+                    avg.toFixed(1) + '%',
+                    isPassed ? 'Passed' : 'Failed'
+                ];
+                row.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+                    };
+                });
+            });
+
+            wsStudents.columns = [
+                { width: 10 },
+                { width: 18 },
+                { width: 32 },
+                { width: 22 },
+                { width: 14 },
+                { width: 16 },
+                { width: 14 }
+            ];
+
+            // Question Item Analysis Sheet
+            if (questions && questions.length > 0) {
+                const wsQ = wb.addWorksheet('Question Item Analysis');
+                wsQ.getRow(1).height = 24;
+                wsQ.getRow(2).height = 18;
+                wsQ.getRow(3).height = 20;
+
+                if (imageId !== null) {
+                    wsQ.addImage(imageId, {
+                        tl: { col: 0.15, row: 0.15 },
+                        ext: { width: 62, height: 62 }
+                    });
+                }
+
+                wsQ.getCell('B1').value = 'PASIG CATHOLIC COLLEGE';
+                wsQ.getCell('B1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
+                wsQ.mergeCells('B1:F1');
+
+                wsQ.getCell('B2').value = 'College Department • Center for Teaching & Learning Assessment';
+                wsQ.getCell('B2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+                wsQ.mergeCells('B2:F2');
+
+                wsQ.getCell('B3').value = 'ITEM ANALYSIS (QUESTION BREAKDOWN)';
+                wsQ.getCell('B3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+                wsQ.mergeCells('B3:F3');
+
+                const qMeta = [
+                    ['Class:', className],
+                    ['Assessment Type:', activeTabName],
+                    ['Module / Filter:', selectedModuleName],
+                    ['Total Questions Analyzed:', String(questions.length) + ' Questions'],
+                    ['Exported On:', new Date().toLocaleString()]
+                ];
+
+                let qr = 5;
+                qMeta.forEach(([k, v]) => {
+                    wsQ.getCell('A' + qr).value = k;
+                    wsQ.getCell('A' + qr).font = { bold: true };
+                    wsQ.mergeCells('A' + qr + ':B' + qr);
+
+                    wsQ.getCell('C' + qr).value = v;
+                    wsQ.mergeCells('C' + qr + ':F' + qr);
+                    qr++;
+                });
+
+                qr++; // Empty row
+                const qHeaderRow = wsQ.getRow(qr);
+                qHeaderRow.values = ['#', 'Question Text', 'Correct Answers', 'Total Attempts', 'Accuracy Rate', 'Difficulty Level'];
+                qHeaderRow.font = { bold: true };
+                qHeaderRow.eachCell((cell) => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                        bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                    };
+                });
+
+                var maxQLen = 50;
+                questions.forEach(function(q, i) {
+                    var pct = Number(q.pct_correct || 0);
+                    var difficulty = pct >= 70 ? 'High (>=70%)' : (pct >= 40 ? 'Moderate (40-69%)' : 'Low (<40%)');
+                    var qText = q.question_text ? decodeAndStripHtml(q.question_text) : '—';
+                    if (qText.length > maxQLen) maxQLen = qText.length;
+                    qr++;
+                    const row = wsQ.getRow(qr);
+                    row.values = [
+                        'Q' + (i + 1),
+                        qText,
+                        String(q.correct_count || 0),
+                        String(q.total_answers || 0),
+                        pct.toFixed(1) + '%',
+                        difficulty
+                    ];
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+                        };
+                    });
+                });
+
+                wsQ.columns = [
+                    { width: 8 },
+                    { width: Math.min(Math.max(maxQLen + 4, 75), 115) },
+                    { width: 18 },
+                    { width: 18 },
+                    { width: 18 },
+                    { width: 24 }
+                ];
+            }
+
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            return;
+        } catch (excelJsError) {
+            console.error('ExcelJS error, falling back to SheetJS:', excelJsError);
+        }
+    }
+
+    // 2. Fallback: SheetJS (XLSX)
+    if (typeof XLSX === 'undefined') {
+        alert('Excel export library is still loading. Please try again in a moment.');
+        return;
+    }
 
     var wb = XLSX.utils.book_new();
 
