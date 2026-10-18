@@ -1468,17 +1468,17 @@
 
                     ws.getCell('A1').value = 'PASIG CATHOLIC COLLEGE';
                     ws.getCell('A1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
-                    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
                     ws.mergeCells('A1:' + maxColLetter + '1');
 
                     ws.getCell('A2').value = 'College Department • Licensure Examination Preparation & Diagnostic Center';
                     ws.getCell('A2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
-                    ws.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                    ws.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
                     ws.mergeCells('A2:' + maxColLetter + '2');
 
                     ws.getCell('A3').value = subTitle;
                     ws.getCell('A3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF245E55' } };
-                    ws.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                    ws.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
                     ws.mergeCells('A3:' + maxColLetter + '3');
                 }
 

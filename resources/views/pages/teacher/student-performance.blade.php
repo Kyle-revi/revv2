@@ -2388,17 +2388,17 @@ async function exportPerformanceToExcel(type) {
 
             wsStudents.getCell('A1').value = 'PASIG CATHOLIC COLLEGE';
             wsStudents.getCell('A1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
-            wsStudents.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+            wsStudents.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
             wsStudents.mergeCells('A1:G1');
 
             wsStudents.getCell('A2').value = 'College Department • Academic Evaluation & Assessment Report';
             wsStudents.getCell('A2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
-            wsStudents.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+            wsStudents.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
             wsStudents.mergeCells('A2:G2');
 
             wsStudents.getCell('A3').value = 'CLASS PERFORMANCE & STUDENT RANKING MASTERLIST';
             wsStudents.getCell('A3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
-            wsStudents.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+            wsStudents.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
             wsStudents.mergeCells('A3:G3');
 
             const sMeta = [
@@ -2492,17 +2492,17 @@ async function exportPerformanceToExcel(type) {
 
                 wsQ.getCell('A1').value = 'PASIG CATHOLIC COLLEGE';
                 wsQ.getCell('A1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
-                wsQ.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                wsQ.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
                 wsQ.mergeCells('A1:F1');
 
                 wsQ.getCell('A2').value = 'College Department • Center for Teaching & Learning Assessment';
                 wsQ.getCell('A2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
-                wsQ.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                wsQ.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
                 wsQ.mergeCells('A2:F2');
 
                 wsQ.getCell('A3').value = 'ITEM ANALYSIS (QUESTION BREAKDOWN)';
                 wsQ.getCell('A3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
-                wsQ.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                wsQ.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
                 wsQ.mergeCells('A3:F3');
 
                 const qMeta = [
