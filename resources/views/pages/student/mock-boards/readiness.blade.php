@@ -1453,15 +1453,20 @@
                     console.warn('Could not load logo image for Excel embed:', e);
                 }
 
-                function addSheetHeader(ws, subTitle, maxColLetter = 'D') {
+                function addSheetHeader(ws, subTitle, maxColLetter = 'D', colAWidth = 36) {
                     ws.getRow(1).height = 24;
                     ws.getRow(2).height = 18;
                     ws.getRow(3).height = 20;
 
                     if (imageId !== null) {
+                        // Dynamically anchor image in Column A right before Column B.
+                        // In Excel, 1 column width unit is ~7.5px. A 48px image is ~6.4 units wide.
+                        // Leaving ~1.8 units (~13.5px) buffer before Column B brings the logo neatly
+                        // beside "PASIG CATHOLIC COLLEGE" without excessive empty space or overlap.
+                        const cFrac = Math.max(0.06, (colAWidth - 8.2) / colAWidth);
                         ws.addImage(imageId, {
-                            tl: { col: 0.12, row: 0.15 },
-                            ext: { width: 54, height: 54 }
+                            tl: { col: cFrac, row: 0.15 },
+                            ext: { width: 48, height: 48 }
                         });
                     }
 
@@ -1521,7 +1526,7 @@
                 // Sheet 1: Readiness Summary
                 // ---------------------------------------------------------
                 const wsSum = wb.addWorksheet('Readiness Summary');
-                addSheetHeader(wsSum, 'MOCK BOARD STUDENT READINESS & PASSING LIKELIHOOD REPORT', 'D');
+                addSheetHeader(wsSum, 'MOCK BOARD STUDENT READINESS & PASSING LIKELIHOOD REPORT', 'D', 36);
 
                 const meta = [
                     ['Report Generated At', d.generatedAt],
@@ -1645,7 +1650,7 @@
                 // Sheet 2: Domain Mastery
                 // ---------------------------------------------------------
                 const wsDom = wb.addWorksheet('Domain Mastery');
-                addSheetHeader(wsDom, 'DOMAIN & SUBJECT MASTERY BREAKDOWN', 'H');
+                addSheetHeader(wsDom, 'DOMAIN & SUBJECT MASTERY BREAKDOWN', 'H', 13);
 
                 let dRow = 5;
                 wsDom.getCell('A' + dRow).value = 'Mock Board:';
@@ -1709,7 +1714,7 @@
                 // Sheet 3: Item Analysis & Conceptual Gaps
                 // ---------------------------------------------------------
                 const wsGaps = wb.addWorksheet('Item Analysis & Gaps');
-                addSheetHeader(wsGaps, 'HIGH-YIELD ITEM & CONCEPTUAL GAPS ANALYSIS', 'D');
+                addSheetHeader(wsGaps, 'HIGH-YIELD ITEM & CONCEPTUAL GAPS ANALYSIS', 'D', 34);
 
                 let gRow = 5;
                 wsGaps.getCell('A' + gRow).value = 'Mock Board:';
@@ -1801,7 +1806,7 @@
                 // Sheet 4: Action Plan & Recommendations
                 // ---------------------------------------------------------
                 const wsPlan = wb.addWorksheet('Action Plan & Directives');
-                addSheetHeader(wsPlan, 'PERSONALIZED ACTION PLAN & STUDY DIRECTIVES', 'B');
+                addSheetHeader(wsPlan, 'PERSONALIZED ACTION PLAN & STUDY DIRECTIVES', 'B', 28);
 
                 let pRow = 5;
                 wsPlan.getCell('A' + pRow).value = 'Mock Board:';

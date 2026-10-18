@@ -2380,9 +2380,10 @@ async function exportPerformanceToExcel(type) {
             wsStudents.getRow(3).height = 20;
 
             if (imageId !== null) {
+                const cFrac = Math.max(0.06, (13 - 8.2) / 13);
                 wsStudents.addImage(imageId, {
-                    tl: { col: 0.12, row: 0.15 },
-                    ext: { width: 54, height: 54 }
+                    tl: { col: cFrac, row: 0.15 },
+                    ext: { width: 48, height: 48 }
                 });
             }
 
@@ -2481,9 +2482,10 @@ async function exportPerformanceToExcel(type) {
                 wsQ.getRow(3).height = 20;
 
                 if (imageId !== null) {
+                    const cFrac = Math.max(0.06, (13 - 8.2) / 13);
                     wsQ.addImage(imageId, {
-                        tl: { col: 0.12, row: 0.15 },
-                        ext: { width: 54, height: 54 }
+                        tl: { col: cFrac, row: 0.15 },
+                        ext: { width: 48, height: 48 }
                     });
                 }
 

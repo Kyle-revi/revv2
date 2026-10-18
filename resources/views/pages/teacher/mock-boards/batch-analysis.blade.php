@@ -77,11 +77,102 @@
         from { opacity: 0; transform: scale(0.95) translateY(8px); }
         to { opacity: 1; transform: scale(1) translateY(0); }
     }
+
+    /* Institutional Print Styling */
+    .mb-print-header,
+    .mb-print-signatures {
+        display: none;
+    }
+
+    @media print {
+        @page {
+            size: portrait;
+            margin: 12mm 10mm;
+        }
+        body {
+            background: #fff !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .rv-sidebar, .rv-topbar, .rv-header-actions, .rv-btn,
+        .filter-card, .tab-nav, .item-modal, nav, aside, footer,
+        #removeBenchmarkModal, #changeBenchmarkModal,
+        .modal, .phase-btn, .tab-btn, .phase-pill-btn {
+            display: none !important;
+        }
+        .rv-main {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .rv-content {
+            padding: 0 !important;
+        }
+        .mock-batch-analysis {
+            max-width: 100% !important;
+        }
+        .mb-print-header {
+            display: block !important;
+        }
+        .mb-print-signatures {
+            display: block !important;
+            page-break-inside: avoid;
+        }
+        .stat-card, .rv-table-card, .chart-card {
+            box-shadow: none !important;
+            border: 1px solid #cbd5e1 !important;
+            page-break-inside: avoid;
+        }
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 12px !important;
+            margin-bottom: 20px !important;
+        }
+        .stat-card {
+            padding: 14px !important;
+        }
+        .stat-card.batch-hero {
+            grid-column: span 1 !important;
+            background: #1a4840 !important;
+            color: #fff !important;
+        }
+        .stat-value {
+            font-size: 24px !important;
+        }
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+        th, td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 6px 10px !important;
+            font-size: 9pt !important;
+        }
+        th {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        tr {
+            page-break-inside: avoid;
+        }
+    }
 </style>
 
 <div class="mock-batch-analysis">
 
 @php
+    $progMap = [
+        'accountancy' => 'Bachelor of Science in Accountancy (CPALE)',
+        'bsa' => 'Bachelor of Science in Accountancy (CPALE)',
+        'education' => 'Bachelor of Secondary / Elementary Education (LEPT)',
+        'educ' => 'Bachelor of Secondary / Elementary Education (LEPT)',
+        'psychology' => 'Bachelor of Science in Psychology (RPsy)',
+        'psych' => 'Bachelor of Science in Psychology (RPsy)',
+        'nursing' => 'Bachelor of Science in Nursing (NLE)',
+        'criminology' => 'Bachelor of Science in Criminology (CLE)',
+    ];
+    $programFormatted = $progMap[strtolower($program)] ?? (strtoupper($program) . ' Program');
+
     $examLabelMap = [
         'accountancy' => 'CPALE',
         'education' => 'LEPT',
@@ -91,6 +182,34 @@
     ];
     $examLabel = $examLabelMap[strtolower($program)] ?? strtoupper($program);
 @endphp
+
+    {{-- Institutional Print Header (Shown only during Print / PDF generation) --}}
+    <div class="mb-print-header">
+        <div style="display:flex; align-items:flex-start; gap:16px; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:16px;">
+            <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="Pasig Catholic College" style="width:72px; height:72px; object-fit:contain; flex-shrink:0; margin-top:2px;">
+            <div style="flex:1;">
+                <div style="font-size:15px; font-weight:800; color:#0f172a; letter-spacing:0.5px; text-transform:uppercase; line-height:1.2;">
+                    Pasig Catholic College
+                </div>
+                <div style="font-size:11px; color:#475569; font-weight:600; text-transform:uppercase; margin-top:2px; margin-bottom:6px;">
+                    College Department &bull; Licensure Examination Preparation & Diagnostic Center
+                </div>
+                <h1 style="font-size:15px; font-weight:700; margin:0; text-transform:uppercase; letter-spacing:0.3px; color:#0f172a; line-height:1.25;">
+                    Mock Board Examination Batch Analytics & Diagnostic Report
+                </h1>
+                <p style="font-size:11px; color:#475569; margin:3px 0 0 0;">
+                    Comprehensive Cohort Performance, Psychometric Item Calibration & Board Readiness Evaluation
+                </p>
+            </div>
+            <div style="text-align:right; font-size:11px; color:#334155; line-height:1.45; flex-shrink:0;">
+                <div><strong>Report Date:</strong> {{ now()->format('F d, Y h:i A') }}</div>
+                <div><strong>Academic Program:</strong> {{ $programFormatted }}</div>
+                <div><strong>Mock Board Title:</strong> {{ $mockBoard->title }}</div>
+                <div><strong>Passing Benchmark:</strong> {{ (int)($mockBoard->passing_percentage ?? 75) }}% Benchmark</div>
+                <div><strong>Active Examinees:</strong> {{ $summary['total_students'] ?? 0 }} Students</div>
+            </div>
+        </div>
+    </div>
 
 {{-- Top Level Batch Stats --}}
 <div class="stats-grid">
@@ -581,6 +700,27 @@
     </div>
     @endforeach
 </div>
+
+    {{-- Institutional Print Signatures Block (Shown only during Print / PDF generation) --}}
+    <div class="mb-print-signatures">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:36px; text-align:center; margin-top:36px; padding-top:16px;">
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">{{ Auth::user()->name ?? 'Subject Instructor / Program Head' }}</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Program Chairperson / Mock Board Coordinator</p>
+            </div>
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">Department Head / Review Director</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Licensure Examination Review & Evaluation</p>
+            </div>
+            <div>
+                <div style="border-bottom:1.5px solid #0f172a; height:45px; margin-bottom:6px;"></div>
+                <p style="font-size:12px; font-weight:700; margin:0; color:#0f172a;">Dean of Academic Affairs</p>
+                <p style="font-size:11px; color:#475569; margin:2px 0 0 0;">Institutional Academic Approval</p>
+            </div>
+        </div>
+    </div>
 
 {{-- Individual Student Item Analysis Modal --}}
 <div id="studentItemModal" class="item-modal">
