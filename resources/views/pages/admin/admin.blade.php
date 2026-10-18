@@ -3,50 +3,8 @@
 @section('title', 'Admin Dashboard')
 @section('page-heading', 'Admin Dashboard')
 
-@section('header-actions')
-    <div class="no-print" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <button type="button" onclick="window.print()" class="rv-btn rv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #245E55;color:#245E55;font-weight:600;">
-            <i class="fas fa-print"></i> Print Executive Report
-        </button>
-        <button type="button" onclick="exportAdminDashboardExcel()" class="rv-btn rv-btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:#107c41;border:none;color:#fff;font-weight:600;">
-            <i class="fas fa-file-excel"></i> Export Excel (.xlsx)
-        </button>
-    </div>
-@endsection
-
 @section('content')
 <style>
-    .ad-print-header,
-    .ad-print-signatures {
-        display: none;
-    }
-
-    @media print {
-        @page { size: portrait; margin: 12mm; }
-        body { background: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        .rv-sidebar, .rv-topbar, .rv-overlay, .no-print, .ad-stat-link, .ad-card-link { display: none !important; }
-        .rv-main { margin-left: 0 !important; width: 100% !important; }
-        .rv-content { padding: 0 !important; }
-        .ad-print-header {
-            display: block !important;
-            border-bottom: 2.5px solid #245E55;
-            padding-bottom: 12px;
-            margin-bottom: 16px;
-        }
-        .ad-print-signatures {
-            display: grid !important;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 28px;
-            margin-top: 32px;
-            padding-top: 16px;
-            page-break-inside: avoid;
-        }
-        .ad-stats { grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
-        .ad-stat { padding: 12px 14px !important; page-break-inside: avoid; }
-        .ad-stat-value { font-size: 24px !important; }
-        .ad-card { page-break-inside: avoid; margin-bottom: 12px; border: 1px solid #cbd5e1 !important; }
-        .ad-grid, .ad-grid-equal { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
-    }
     .ad-wrap {
         display: flex;
         flex-direction: column;
@@ -335,31 +293,6 @@
 @endphp
 
 <div class="ad-wrap">
-    {{-- Official PCC Printable Header --}}
-    <div class="ad-print-header">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-            <div style="display:flex;align-items:center;gap:14px;">
-                <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="PCC Logo" style="width:62px;height:62px;object-fit:contain;flex-shrink:0;">
-                <div>
-                    <div style="font-size:15px;font-weight:800;color:#245E55;text-transform:uppercase;letter-spacing:0.6px;">
-                        Pasig Catholic College
-                    </div>
-                    <div style="font-size:12px;color:#475569;margin-top:1px;">
-                        College Department &bull; Office of the System Administrator &amp; Academic Affairs
-                    </div>
-                    <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:4px;">
-                        Institutional Performance &amp; Licensure Readiness Executive Report
-                    </div>
-                </div>
-            </div>
-            <div style="text-align:right;font-size:11.5px;color:#475569;line-height:1.5;">
-                <div><strong>Prepared By:</strong> {{ auth()->user()->name ?? 'System Administrator' }}</div>
-                <div><strong>Total Active Students:</strong> {{ number_format($totalStudents) }}</div>
-                <div><strong>Date Generated:</strong> {{ now()->format('F d, Y h:i A') }}</div>
-            </div>
-        </div>
-    </div>
-
     <section class="ad-stats">
         <article class="ad-stat">
             <div>
@@ -695,32 +628,12 @@
             @endif
         </div>
     </section>
-
-    {{-- Official PCC Printable Signature Block --}}
-    <div class="ad-print-signatures">
-        <div style="text-align:center;">
-            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
-            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">{{ auth()->user()->name ?? 'System Administrator' }}</div>
-            <div style="font-size:11px;color:#64748b;">Prepared By &bull; System Administrator</div>
-        </div>
-        <div style="text-align:center;">
-            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
-            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">Academic Programs Coordinator</div>
-            <div style="font-size:11px;color:#64748b;">Reviewed &amp; Verified By</div>
-        </div>
-        <div style="text-align:center;">
-            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
-            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">College Dean</div>
-            <div style="font-size:11px;color:#64748b;">Noted &amp; Approved By</div>
-        </div>
-    </div>
 </div>
 
 @endsection
 
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script>
     (function () {
         const ctx = document.getElementById('adminRoleChart');
@@ -765,134 +678,5 @@
             },
         });
     })();
-
-    async function exportAdminDashboardExcel() {
-        const wb = new ExcelJS.Workbook();
-        wb.creator = 'Reviso LMS - Pasig Catholic College';
-        wb.created = new Date();
-
-        let logoId = null;
-        try {
-            const resp = await fetch("{{ asset('assets/img/brand/pcc_logo.png') }}");
-            if (resp.ok) {
-                const buf = await resp.arrayBuffer();
-                logoId = wb.addImage({ buffer: buf, extension: 'png' });
-            }
-        } catch (e) {
-            console.warn('Could not load PCC logo for Excel export:', e);
-        }
-
-        function styleHeaderWithLogo(ws, title, subtitle) {
-            ws.mergeCells('A1:E1');
-            ws.mergeCells('A2:E2');
-            ws.mergeCells('A3:E3');
-
-            ws.getCell('A1').value = 'PASIG CATHOLIC COLLEGE — COLLEGE DEPARTMENT';
-            ws.getCell('A1').font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FF245E55' } };
-            ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
-
-            ws.getCell('A2').value = title;
-            ws.getCell('A2').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
-            ws.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
-
-            ws.getCell('A3').value = subtitle;
-            ws.getCell('A3').font = { name: 'Calibri', size: 9.5, italic: true, color: { argb: 'FF64748B' } };
-            ws.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
-
-            ws.getRow(1).height = 20;
-            ws.getRow(2).height = 18;
-            ws.getRow(3).height = 18;
-
-            if (logoId !== null) {
-                ws.addImage(logoId, {
-                    tl: { col: 0.08, row: 0.12 },
-                    ext: { width: 50, height: 50 },
-                    editAs: 'oneCell'
-                });
-            }
-        }
-
-        const ws1 = wb.addWorksheet('Executive Summary');
-        ws1.columns = [
-            { width: 32 },
-            { width: 22 },
-            { width: 22 },
-            { width: 22 },
-            { width: 24 },
-        ];
-        styleHeaderWithLogo(
-            ws1,
-            'Institutional Performance & Licensure Readiness Executive Summary',
-            'Generated on ' + new Date().toLocaleString()
-        );
-
-        ws1.addRow([]);
-        const kpiHeader = ws1.addRow(['KEY METRIC', 'VALUE', 'DETAILS / STATUS', '', '']);
-        kpiHeader.eachCell((cell, colNumber) => {
-            if (colNumber <= 3) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245E55' } };
-                cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-            }
-        });
-
-        const kpiRows = [
-            ['Total Enrolled Students', {{ (int) $totalStudents }}, 'Active student accounts'],
-            ['Total Faculty / Teachers', {{ (int) $totalTeachers }}, 'Active instructor accounts'],
-            ['Pending Account Approvals', {{ (int) $pendingApprovals }}, 'Awaiting admin verification'],
-            ['Total Active Classes', {{ (int) $totalActiveClasses }}, 'Current academic classes'],
-        ];
-        kpiRows.forEach(r => ws1.addRow(r));
-
-        ws1.addRow([]);
-        const progTitleRow = ws1.addRow(['POST-TEST PASSING RATE BY PROGRAM', '', '', '', '']);
-        progTitleRow.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF245E55' } };
-
-        const progHeader = ws1.addRow(['Program', 'Passing Rate (%)', 'Average Score (%)', 'Students Passed / Attempted', 'Mock Boards Count']);
-        progHeader.eachCell(cell => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245E55' } };
-            cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-        });
-
-        const progData = @json(array_values($postTestAnalytics['by_program'] ?? []));
-        progData.forEach(p => {
-            ws1.addRow([
-                p.label || '—',
-                (p.passing_rate ?? 0) + '%',
-                (p.average_score ?? 0) + '%',
-                (p.students_passed ?? 0) + ' / ' + (p.students_attempted ?? 0),
-                p.boards_count ?? 0
-            ]);
-        });
-
-        ws1.addRow([]);
-        const classTitleRow = ws1.addRow(['STUDENTS PER CLASS BREAKDOWN', '', '', '', '']);
-        classTitleRow.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF245E55' } };
-
-        const classHeader = ws1.addRow(['Class Name', 'Year Level', 'School Year', 'Enrolled Students', '']);
-        classHeader.eachCell((cell, colNumber) => {
-            if (colNumber <= 4) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245E55' } };
-                cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
-            }
-        });
-
-        const classesData = @json($classesBreakdown);
-        classesData.forEach(c => {
-            ws1.addRow([
-                c.name || '—',
-                c.year_level ? ('Year ' + c.year_level) : '—',
-                c.school_year || '—',
-                c.student_count ?? 0,
-                ''
-            ]);
-        });
-
-        const buf = await wb.xlsx.writeBuffer();
-        const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'PCC_Admin_Executive_Report_' + new Date().toISOString().slice(0, 10) + '.xlsx';
-        link.click();
-    }
 </script>
 @endsection

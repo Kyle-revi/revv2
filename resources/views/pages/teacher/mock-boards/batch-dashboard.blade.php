@@ -11,60 +11,30 @@
 @endsection
 
 @section('header-actions')
-    <div class="no-print" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <button type="button" onclick="window.print()" class="rv-btn rv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #245E55;color:#245E55;font-weight:600;">
-            <i class="fas fa-print"></i> Print Summary
+    @if($isAdmin)
+        <a href="{{ route('adminDashboard') }}" class="rv-btn rv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+            <i class="fas fa-arrow-left"></i> Back to Admin Dashboard
+        </a>
+    @else
+        <button class="rv-btn rv-btn-primary" onclick="openCreateModal()">
+            <i class="fas fa-plus"></i> Create Mock Board
         </button>
-        @if($isAdmin)
-            <a href="{{ route('adminDashboard') }}" class="rv-btn rv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
-                <i class="fas fa-arrow-left"></i> Back to Admin Dashboard
-            </a>
-        @else
-            <button class="rv-btn rv-btn-primary" onclick="openCreateModal()">
-                <i class="fas fa-plus"></i> Create Mock Board
-            </button>
-        @endif
-    </div>
+    @endif
 @endsection
 
 @section('content')
 <div class="mock-boards-container">
 
-    {{-- Official PCC Printable Header --}}
-    <div class="mb-print-header">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-            <div style="display:flex;align-items:center;gap:14px;">
-                <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="PCC Logo" style="width:62px;height:62px;object-fit:contain;flex-shrink:0;">
-                <div>
-                    <div style="font-size:15px;font-weight:800;color:#245E55;text-transform:uppercase;letter-spacing:0.6px;">
-                        Pasig Catholic College
-                    </div>
-                    <div style="font-size:12px;color:#475569;margin-top:1px;">
-                        College Department &bull; {{ ucfirst($selectedProgram ?? 'All') }} Licensure Review Program
-                    </div>
-                    <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:4px;">
-                        Program Mock Boards Overview &amp; Participation Report
-                    </div>
-                </div>
-            </div>
-            <div style="text-align:right;font-size:11.5px;color:#475569;line-height:1.5;">
-                <div><strong>Program:</strong> {{ strtoupper($selectedProgram ?? 'N/A') }}</div>
-                <div><strong>Passing Rate:</strong> {{ number_format($completionRate ?? 0, 0) }}%</div>
-                <div><strong>Date Generated:</strong> {{ now()->format('F d, Y h:i A') }}</div>
-            </div>
-        </div>
-    </div>
-
     {{-- SUCCESS ALERT --}}
     @if(session('success'))
-        <div class="alert alert-success no-print">
+        <div class="alert alert-success">
             <i class="fas fa-check-circle"></i> {{ session('success') }}
         </div>
     @endif
 
     {{-- PROGRAM TABS (FOR ADMIN / MULTI-PROGRAM VIEW) --}}
     @if(isset($programs) && count($programs) > 1)
-        <div class="no-print" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; flex-wrap: wrap;">
             @foreach($programs as $prog)
                 @php
                     $isActive = ($selectedProgram ?? '') === $prog;
@@ -191,7 +161,7 @@
                         <span><i class="fas fa-user-graduate"></i> {{ $board->attempts_count ?? 0 }} Attempts</span>
                     </div>
 
-                    <div class="board-actions no-print">
+                    <div class="board-actions">
                         <a href="{{ route('mock-boards.batch.analysis', ['program' => $board->program, 'mock_board' => $board->id]) }}" class="rv-btn rv-btn-primary">
                             <i class="fas fa-chart-line"></i> Batch Analysis
                         </a>
@@ -259,25 +229,6 @@
             @endforeach
         </div>
     @endif
-
-    {{-- Official PCC Printable Signature Block --}}
-    <div class="mb-print-signatures">
-        <div style="text-align:center;">
-            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
-            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">{{ auth()->user()->name ?? 'Faculty / Administrator' }}</div>
-            <div style="font-size:11px;color:#64748b;">Prepared By</div>
-        </div>
-        <div style="text-align:center;">
-            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
-            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">Program Chair / Coordinator</div>
-            <div style="font-size:11px;color:#64748b;">Reviewed &amp; Verified By</div>
-        </div>
-        <div style="text-align:center;">
-            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
-            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">College Dean</div>
-            <div style="font-size:11px;color:#64748b;">Noted &amp; Approved By</div>
-        </div>
-    </div>
 
 </div>
 
@@ -391,34 +342,6 @@
 
 @section('head')
 <style>
-    .mb-print-header,
-    .mb-print-signatures {
-        display: none;
-    }
-
-    @media print {
-        @page { size: portrait; margin: 12mm; }
-        body { background: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        .rv-sidebar, .rv-topbar, .rv-overlay, .no-print, .modal, .board-actions { display: none !important; }
-        .rv-main { margin-left: 0 !important; width: 100% !important; }
-        .rv-content { padding: 0 !important; }
-        .mb-print-header {
-            display: block !important;
-            border-bottom: 2.5px solid #245E55;
-            padding-bottom: 12px;
-            margin-bottom: 16px;
-        }
-        .mb-print-signatures {
-            display: grid !important;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 28px;
-            margin-top: 32px;
-            padding-top: 16px;
-            page-break-inside: avoid;
-        }
-        .mock-board-card, .analytics-card { page-break-inside: avoid; box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
-    }
-
     .mock-boards-container { max-width: 1100px; padding: 20px; margin: 0 auto; font-family: var(--font, 'DM Sans', sans-serif); color: #2D2D2B; }
 
     .analytics-overview-grid {
