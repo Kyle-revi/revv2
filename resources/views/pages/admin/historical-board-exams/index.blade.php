@@ -6,8 +6,47 @@
     Historical <span style="color: #245E55;">Board Exam Results & Benchmarks</span>
 @endsection
 
+@section('header-actions')
+    <div class="no-print" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button type="button" onclick="window.print()" class="rv-btn rv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #245E55;color:#245E55;font-weight:600;">
+            <i class="fas fa-print"></i> Print Benchmark Report
+        </button>
+        <button type="button" onclick="exportHistoricalBenchmarksExcel()" class="rv-btn rv-btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:#107c41;border:none;color:#fff;font-weight:600;">
+            <i class="fas fa-file-excel"></i> Export Excel (.xlsx)
+        </button>
+    </div>
+@endsection
+
 @section('content')
 <style>
+    .hb-print-header,
+    .hb-print-signatures {
+        display: none;
+    }
+
+    @media print {
+        @page { size: portrait; margin: 12mm; }
+        body { background: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .rv-sidebar, .rv-topbar, .rv-overlay, .no-print, .hb-filter-bar, .hb-sub, .alert { display: none !important; }
+        .rv-main { margin-left: 0 !important; width: 100% !important; }
+        .rv-content { padding: 0 !important; }
+        .hb-print-header {
+            display: block !important;
+            border-bottom: 2.5px solid #245E55;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .hb-print-signatures {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            margin-top: 32px;
+            padding-top: 16px;
+            page-break-inside: avoid;
+        }
+        .hb-card, .hb-comp-card { page-break-inside: avoid; box-shadow: none !important; }
+    }
+
     .hb-wrap { display: flex; flex-direction: column; gap: 24px; max-width: 1300px; }
     .hb-sub { font-size: 15px; color: #64748b; margin: -12px 0 6px; line-height: 1.5; }
 
@@ -169,6 +208,30 @@
 </style>
 
 <div class="hb-wrap">
+    {{-- Official PCC Printable Header --}}
+    <div class="hb-print-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="PCC Logo" style="width:62px;height:62px;object-fit:contain;flex-shrink:0;">
+                <div>
+                    <div style="font-size:15px;font-weight:800;color:#245E55;text-transform:uppercase;letter-spacing:0.6px;">
+                        Pasig Catholic College
+                    </div>
+                    <div style="font-size:12px;color:#475569;margin-top:1px;">
+                        College Department &bull; Office of Academic Affairs &amp; Licensure Review
+                    </div>
+                    <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:4px;">
+                        Historical PRC Board Exam Benchmarks &amp; Variance Report
+                    </div>
+                </div>
+            </div>
+            <div style="text-align:right;font-size:11.5px;color:#475569;line-height:1.5;">
+                <div><strong>Program Filter:</strong> {{ $selectedProgram ? ucfirst($selectedProgram) : 'All Programs' }}</div>
+                <div><strong>Compared Mock Boards:</strong> {{ count($comparisons) }}</div>
+                <div><strong>Date Generated:</strong> {{ now()->format('F d, Y h:i A') }}</div>
+            </div>
+        </div>
+    </div>
 
     @if(session('success'))
         <div class="alert alert-success" style="background:#e1f5ee;color:#0f6e56;padding:14px 18px;border-radius:10px;font-size:15px;display:flex;align-items:center;gap:10px;">
@@ -204,7 +267,7 @@
 
     {{-- SECTION 1: ADD NEW HISTORICAL RECORD --}}
     @if(auth()->user() && in_array(auth()->user()->role, ['admin', 'superadmin'], true))
-        <div class="hb-card">
+        <div class="hb-card no-print">
             <div class="hb-card-head">
                 <h3 class="hb-card-title">
                     <i class="fas fa-plus-circle"></i> Add Historical Board Exam Result
@@ -305,7 +368,7 @@
                             </div>
 
                             {{-- Link / Change Benchmark Dropdown --}}
-                            <form action="{{ route('student.mock-boards.link-historical-exam', $item['mock_board_id']) }}" method="POST" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <form class="no-print" action="{{ route('student.mock-boards.link-historical-exam', $item['mock_board_id']) }}" method="POST" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                 @csrf
                                 <select name="historical_board_exam_result_id" class="hb-select" style="height:36px; font-size:13px; min-width:240px;" onchange="this.form.submit()">
                                     <option value="">-- Select Historical Benchmark --</option>
@@ -422,7 +485,7 @@
                             <th>Passing Rate</th>
                             <th>Source Note</th>
                             @if(auth()->user() && in_array(auth()->user()->role, ['admin', 'superadmin'], true))
-                                <th style="text-align:right;">Actions</th>
+                                <th class="no-print" style="text-align:right;">Actions</th>
                             @endif
                         </tr>
                     </thead>
@@ -455,7 +518,7 @@
                                     {{ $result['source_note'] ?? '—' }}
                                 </td>
                                 @if(auth()->user() && in_array(auth()->user()->role, ['admin', 'superadmin'], true))
-                                    <td style="text-align:right;">
+                                    <td class="no-print" style="text-align:right;">
                                         <form action="{{ route('historical-board-exams.destroy', $result['id']) }}" method="POST" onsubmit="return confirm('Delete this historical exam record?')" style="display:inline;">
                                             @csrf
                                             @method('DELETE')
@@ -473,5 +536,153 @@
         @endif
     </div>
 
+    {{-- Official PCC Printable Signature Block --}}
+    <div class="hb-print-signatures">
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">{{ auth()->user()->name ?? 'System Administrator' }}</div>
+            <div style="font-size:11px;color:#64748b;">Prepared By &bull; System Administrator</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">Program Chair / Coordinator</div>
+            <div style="font-size:11px;color:#64748b;">Reviewed &amp; Verified By</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">College Dean</div>
+            <div style="font-size:11px;color:#64748b;">Noted &amp; Approved By</div>
+        </div>
+    </div>
 </div>
+@endsection
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script>
+    async function exportHistoricalBenchmarksExcel() {
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'Reviso LMS - Pasig Catholic College';
+        wb.created = new Date();
+
+        let logoId = null;
+        try {
+            const resp = await fetch("{{ asset('assets/img/brand/pcc_logo.png') }}");
+            if (resp.ok) {
+                const buf = await resp.arrayBuffer();
+                logoId = wb.addImage({ buffer: buf, extension: 'png' });
+            }
+        } catch (e) {
+            console.warn('Could not load PCC logo for Excel export:', e);
+        }
+
+        function styleHeaderWithLogo(ws, title, subtitle) {
+            ws.mergeCells('A1:F1');
+            ws.mergeCells('A2:F2');
+            ws.mergeCells('A3:F3');
+
+            ws.getCell('A1').value = 'PASIG CATHOLIC COLLEGE — COLLEGE DEPARTMENT';
+            ws.getCell('A1').font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FF245E55' } };
+            ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
+
+            ws.getCell('A2').value = title;
+            ws.getCell('A2').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+            ws.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
+
+            ws.getCell('A3').value = subtitle;
+            ws.getCell('A3').font = { name: 'Calibri', size: 9.5, italic: true, color: { argb: 'FF64748B' } };
+            ws.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
+
+            ws.getRow(1).height = 20;
+            ws.getRow(2).height = 18;
+            ws.getRow(3).height = 18;
+
+            if (logoId !== null) {
+                ws.addImage(logoId, {
+                    tl: { col: 0.08, row: 0.12 },
+                    ext: { width: 50, height: 50 },
+                    editAs: 'oneCell'
+                });
+            }
+        }
+
+        const ws1 = wb.addWorksheet('Mock Board vs PRC Variance');
+        ws1.columns = [
+            { width: 34 },
+            { width: 16 },
+            { width: 24 },
+            { width: 22 },
+            { width: 26 },
+            { width: 20 },
+        ];
+        styleHeaderWithLogo(
+            ws1,
+            'Mock Board Post-Test vs. PRC Physical Licensure Benchmark Variance',
+            'Generated on ' + new Date().toLocaleString()
+        );
+
+        ws1.addRow([]);
+        const h1 = ws1.addRow(['Mock Board Title', 'Program', 'Target Phase', 'Reviso Post-Test Rate', 'PRC Benchmark', 'Variance (pts)']);
+        h1.eachCell(cell => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245E55' } };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+        });
+
+        const comparisons = @json($comparisons);
+        comparisons.forEach(item => {
+            const deltaStr = item.historical_id
+                ? ((item.delta > 0 ? '+' : '') + Number(item.delta).toFixed(1) + ' pts')
+                : 'Not Linked';
+            ws1.addRow([
+                item.mock_board_title || '—',
+                (item.program || '').toUpperCase(),
+                item.phase_names || '—',
+                Number(item.reviso_passing_rate || 0).toFixed(1) + '% (' + (item.students_passed || 0) + '/' + (item.students_attempted || 0) + ')',
+                item.historical_id ? (Number(item.historical_passing_rate || 0).toFixed(1) + '% — ' + (item.historical_label || '')) : 'Not Linked',
+                deltaStr
+            ]);
+        });
+
+        const ws2 = wb.addWorksheet('Saved PRC Reference Data');
+        ws2.columns = [
+            { width: 18 },
+            { width: 34 },
+            { width: 16 },
+            { width: 22 },
+            { width: 18 },
+            { width: 32 },
+        ];
+        styleHeaderWithLogo(
+            ws2,
+            'Saved Official PRC Physical Board Exam Reference Records',
+            'Generated on ' + new Date().toLocaleString()
+        );
+
+        ws2.addRow([]);
+        const h2 = ws2.addRow(['Program', 'Exam Label', 'Period / Year', 'Passed / Examinees', 'Passing Rate (%)', 'Source Note']);
+        h2.eachCell(cell => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245E55' } };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+        });
+
+        const results = @json($results);
+        results.forEach(r => {
+            ws2.addRow([
+                (r.program || '').toUpperCase(),
+                r.exam_label || '—',
+                r.exam_period_or_year || '—',
+                (r.passed_count ?? 0) + ' / ' + (r.total_examinees ?? 0),
+                (r.passing_rate ?? 0) + '%',
+                r.source_note || '—'
+            ]);
+        });
+
+        const buf = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'PCC_Historical_PRC_Benchmarks_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+        link.click();
+    }
+</script>
 @endsection

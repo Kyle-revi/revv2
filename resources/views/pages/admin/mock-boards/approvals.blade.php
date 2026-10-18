@@ -6,23 +6,55 @@
     Mock Board <span style="color: #245E55;">Approvals</span>
 @endsection
 
+@section('header-actions')
+    <div class="no-print" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button type="button" onclick="window.print()" class="rv-btn rv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #245E55;color:#245E55;font-weight:600;">
+            <i class="fas fa-print"></i> Print Approvals Report
+        </button>
+    </div>
+@endsection
+
 @section('content')
 <div class="mock-boards-container">
+    {{-- Official PCC Printable Header --}}
+    <div class="mba-print-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="PCC Logo" style="width:62px;height:62px;object-fit:contain;flex-shrink:0;">
+                <div>
+                    <div style="font-size:15px;font-weight:800;color:#245E55;text-transform:uppercase;letter-spacing:0.6px;">
+                        Pasig Catholic College
+                    </div>
+                    <div style="font-size:12px;color:#475569;margin-top:1px;">
+                        College Department &bull; Office of Academic Affairs &amp; Quality Assurance
+                    </div>
+                    <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:4px;">
+                        Mock Board Examinations Approval Status Report ({{ ucfirst($selectedStatus) }})
+                    </div>
+                </div>
+            </div>
+            <div style="text-align:right;font-size:11.5px;color:#475569;line-height:1.5;">
+                <div><strong>Status Filter:</strong> {{ strtoupper($selectedStatus) }}</div>
+                <div><strong>Total Boards:</strong> {{ $mockBoards->count() }}</div>
+                <div><strong>Date Generated:</strong> {{ now()->format('F d, Y h:i A') }}</div>
+            </div>
+        </div>
+    </div>
 
     {{-- SUCCESS ALERT --}}
     @if(session('success'))
-        <div class="alert alert-success">
+        <div class="alert alert-success no-print">
             <i class="fas fa-check-circle"></i> {{ session('success') }}
         </div>
     @endif
     @if(session('error'))
-        <div class="alert alert-error">
+        <div class="alert alert-error no-print">
             <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
         </div>
     @endif
 
     {{-- STATUS FILTER TABS --}}
-    <div class="status-tabs">
+    <div class="status-tabs no-print">
         @foreach(['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
             <a href="{{ route('admin.mock-boards.approvals', ['status' => $key]) }}"
                class="status-tab {{ $selectedStatus === $key ? 'active' : '' }} tab-{{ $key }}">
@@ -78,7 +110,7 @@
                         </span>
                     </div>
 
-                    <div class="board-actions">
+                    <div class="board-actions no-print">
                         <button type="button" class="rv-btn rv-btn-secondary" onclick="openQuestionsModal({{ $board->id }})">
                             <i class="fas fa-list-ol"></i> View Questions
                         </button>
@@ -101,6 +133,24 @@
         </div>
     @endif
 
+    {{-- Official PCC Printable Signature Block --}}
+    <div class="mba-print-signatures">
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">{{ auth()->user()->name ?? 'System Administrator' }}</div>
+            <div style="font-size:11px;color:#64748b;">Prepared By &bull; System Administrator</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">Program Chair / Coordinator</div>
+            <div style="font-size:11px;color:#64748b;">Reviewed &amp; Endorsed By</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">College Dean</div>
+            <div style="font-size:11px;color:#64748b;">Approved By</div>
+        </div>
+    </div>
 </div>
 
 {{-- Questions Preview Modal --}}
@@ -131,7 +181,12 @@
 
             {{-- Modal Footer --}}
             <div class="qm-footer">
-                <div id="qmFooterActions" style="display: flex; gap: 8px;"></div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="rv-btn rv-btn-secondary" style="border-color:#245E55;color:#245E55;" onclick="printMockBoardQuestionnaire()">
+                        <i class="fas fa-print"></i> Print Questionnaire &amp; Answer Key
+                    </button>
+                    <div id="qmFooterActions" style="display: flex; gap: 8px;"></div>
+                </div>
                 <button type="button" class="rv-btn rv-btn-secondary" onclick="closeQuestionsModal()">Close</button>
             </div>
         </div>
@@ -162,6 +217,34 @@
 
 @section('head')
 <style>
+    .mba-print-header,
+    .mba-print-signatures {
+        display: none;
+    }
+
+    @media print {
+        @page { size: portrait; margin: 12mm; }
+        body { background: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .rv-sidebar, .rv-topbar, .rv-overlay, .no-print, .modal { display: none !important; }
+        .rv-main { margin-left: 0 !important; width: 100% !important; }
+        .rv-content { padding: 0 !important; }
+        .mba-print-header {
+            display: block !important;
+            border-bottom: 2.5px solid #245E55;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .mba-print-signatures {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            margin-top: 32px;
+            padding-top: 16px;
+            page-break-inside: avoid;
+        }
+        .mock-board-card { page-break-inside: avoid; box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+    }
+
     .mock-boards-container { max-width: 1100px; padding: 20px; margin: 0 auto; }
 
     .status-tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; }
@@ -517,6 +600,129 @@
     function closeRejectModal() {
         document.getElementById('rejectModal').style.display = 'none';
     }
+
+    function printMockBoardQuestionnaire() {
+        if (!currentBoardData) return;
+
+        const logoUrl = "{{ asset('assets/img/brand/pcc_logo.png') }}";
+        const phases = currentBoardData.phases || [];
+        let phasesHtml = '';
+
+        phases.forEach((phase) => {
+            const questions = phase.questions || [];
+            phasesHtml += `
+                <div style="margin-top:20px;page-break-inside:avoid;">
+                    <div style="background:#f1f5f9;border-left:4px solid #245E55;padding:10px 14px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+                        <strong style="font-size:14px;color:#0f172a;">${escapeHtml(phase.label)}</strong>
+                        <span style="font-size:12px;color:#475569;">${phase.total_questions} Items &bull; Passing: ${phase.passing_grade}%</span>
+                    </div>
+            `;
+
+            if (questions.length === 0) {
+                phasesHtml += `<p style="font-size:12px;color:#64748b;font-style:italic;">No questions configured in this phase.</p>`;
+            } else {
+                questions.forEach((q, idx) => {
+                    const options = q.options || {};
+                    const correctOpt = String(q.correct_option || '').trim().toLowerCase();
+                    let optsHtml = '';
+
+                    if (Array.isArray(options)) {
+                        const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+                        options.forEach((optText, optIdx) => {
+                            const letter = letters[optIdx] || String.fromCharCode(97 + optIdx);
+                            const isCorrect = correctOpt === letter || correctOpt === String(optText).trim().toLowerCase();
+                            optsHtml += `
+                                <div style="padding:4px 8px;margin-bottom:3px;border-radius:4px;font-size:12px;${isCorrect ? 'background:#dcfce7;color:#14532d;font-weight:700;border:1px solid #86efac;' : 'color:#334155;'}">
+                                    <strong>${letter.toUpperCase()}.</strong> ${escapeHtml(optText)} ${isCorrect ? ' &#10003; (Correct Answer)' : ''}
+                                </div>
+                            `;
+                        });
+                    } else if (typeof options === 'object' && options !== null) {
+                        Object.keys(options).forEach(key => {
+                            const optText = options[key];
+                            const cleanKey = String(key).trim().toLowerCase();
+                            const isCorrect = correctOpt === cleanKey || correctOpt === String(optText).trim().toLowerCase();
+                            optsHtml += `
+                                <div style="padding:4px 8px;margin-bottom:3px;border-radius:4px;font-size:12px;${isCorrect ? 'background:#dcfce7;color:#14532d;font-weight:700;border:1px solid #86efac;' : 'color:#334155;'}">
+                                    <strong>${cleanKey.toUpperCase()}.</strong> ${escapeHtml(optText)} ${isCorrect ? ' &#10003; (Correct Answer)' : ''}
+                                </div>
+                            `;
+                        });
+                    }
+
+                    phasesHtml += `
+                        <div style="border:1px solid #cbd5e1;border-radius:8px;padding:12px 14px;margin-bottom:10px;page-break-inside:avoid;">
+                            <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#475569;margin-bottom:6px;">
+                                <strong>Item #${idx + 1}</strong>
+                                <span>${q.domain ? escapeHtml(q.domain) + ' &bull; ' : ''}${q.difficulty ? escapeHtml(String(q.difficulty).toUpperCase()) + ' &bull; ' : ''}${q.points || 1} pt(s)</span>
+                            </div>
+                            <div style="font-size:13px;font-weight:600;color:#0f172a;margin-bottom:8px;">${escapeHtml(q.question_text)}</div>
+                            <div>${optsHtml}</div>
+                            ${q.explanation ? `<div style="margin-top:6px;padding:6px 10px;background:#eff6ff;border-radius:4px;font-size:11.5px;color:#1e40af;"><strong>Rationale:</strong> ${escapeHtml(q.explanation)}</div>` : ''}
+                        </div>
+                    `;
+                });
+            }
+
+            phasesHtml += `</div>`;
+        });
+
+        const win = window.open('', '_blank', 'width=920,height=800');
+        if (!win) return;
+
+        win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Questionnaire & Answer Key - ${escapeHtml(currentBoardData.title)}</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #0f172a; margin: 14mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @media print { @page { size: portrait; margin: 12mm; } }
+    </style>
+</head>
+<body>
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #245E55;padding-bottom:12px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+            <img src="${logoUrl}" alt="PCC Logo" style="width:62px;height:62px;object-fit:contain;">
+            <div>
+                <div style="font-size:15px;font-weight:800;color:#245E55;text-transform:uppercase;letter-spacing:0.6px;">Pasig Catholic College</div>
+                <div style="font-size:12px;color:#475569;">College Department &bull; Office of Academic Affairs &amp; Licensure Review</div>
+                <div style="font-size:17px;font-weight:800;color:#0f172a;margin-top:4px;">Mock Board Master Questionnaire &amp; Official Answer Key</div>
+            </div>
+        </div>
+        <div style="text-align:right;font-size:11.5px;color:#475569;line-height:1.5;">
+            <div><strong>Mock Board:</strong> ${escapeHtml(currentBoardData.title)}</div>
+            <div><strong>Program:</strong> ${escapeHtml((currentBoardData.program || '').toUpperCase())}</div>
+            <div><strong>Author:</strong> ${escapeHtml(currentBoardData.teacher?.name || 'Faculty')}</div>
+            <div><strong>Passing Grade:</strong> ${currentBoardData.passing_percentage}%</div>
+        </div>
+    </div>
+    ${phasesHtml}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:36px;padding-top:16px;page-break-inside:avoid;">
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;text-transform:uppercase;">${escapeHtml(currentBoardData.teacher?.name || 'Subject Instructor')}</div>
+            <div style="font-size:11px;color:#64748b;">Prepared By &bull; Faculty Author</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;text-transform:uppercase;">Program Chair / Coordinator</div>
+            <div style="font-size:11px;color:#64748b;">Reviewed &amp; Validated By</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;text-transform:uppercase;">College Dean</div>
+            <div style="font-size:11px;color:#64748b;">Approved By</div>
+        </div>
+    </div>
+    <script>
+        window.onload = function() { setTimeout(function() { window.print(); }, 250); };
+    <\/script>
+</body>
+</html>`);
+        win.document.close();
+    }
+
     window.onclick = function(event) {
         if (event.target.classList.contains('modal')) {
             event.target.style.display = "none";

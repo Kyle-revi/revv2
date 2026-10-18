@@ -3,12 +3,52 @@
 @section('title', 'User Management')
 @section('page-heading', 'User Management')
 
+@section('header-actions')
+    <div class="no-print" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button type="button" onclick="window.print()" class="rv-btn rv-btn-secondary" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #245E55;color:#245E55;font-weight:600;">
+            <i class="fas fa-print"></i> Print User Roster
+        </button>
+        <button type="button" onclick="exportUsersToExcel()" class="rv-btn rv-btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:#107c41;border:none;color:#fff;font-weight:600;">
+            <i class="fas fa-file-excel"></i> Export Excel (.xlsx)
+        </button>
+    </div>
+@endsection
+
 @section('breadcrumb')
     <li class="breadcrumb-item active" aria-current="page">Users</li>
 @endsection
 
 @section('content')
 <style>
+    .um-print-header,
+    .um-print-signatures {
+        display: none;
+    }
+
+    @media print {
+        @page { size: portrait; margin: 12mm; }
+        body { background: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .rv-sidebar, .rv-topbar, .rv-overlay, .no-print, .um-sub, .um-pagination, .um-modal-overlay { display: none !important; }
+        .rv-main { margin-left: 0 !important; width: 100% !important; }
+        .rv-content { padding: 0 !important; }
+        .um-print-header {
+            display: block !important;
+            border-bottom: 2.5px solid #245E55;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .um-print-signatures {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            margin-top: 32px;
+            padding-top: 16px;
+            page-break-inside: avoid;
+        }
+        .um-card { border: 1px solid #cbd5e1 !important; }
+        .um-table th, .um-table td { padding: 8px 10px !important; font-size: 12px !important; }
+    }
+
     .um-wrap { display: flex; flex-direction: column; gap: 20px; }
     .um-sub  { font-size: 15px; color: #64748b; margin: -6px 0 8px; }
 
@@ -336,12 +376,37 @@
 </style>
 
 <div class="um-wrap">
+    {{-- Official PCC Printable Header --}}
+    <div class="um-print-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <img src="{{ asset('assets/img/brand/pcc_logo.png') }}" alt="PCC Logo" style="width:62px;height:62px;object-fit:contain;flex-shrink:0;">
+                <div>
+                    <div style="font-size:15px;font-weight:800;color:#245E55;text-transform:uppercase;letter-spacing:0.6px;">
+                        Pasig Catholic College
+                    </div>
+                    <div style="font-size:12px;color:#475569;margin-top:1px;">
+                        College Department &bull; Office of the System Administrator &amp; Registrar
+                    </div>
+                    <div style="font-size:18px;font-weight:800;color:#0f172a;margin-top:4px;">
+                        Official Platform User Roster &amp; Access Masterlist
+                    </div>
+                </div>
+            </div>
+            <div style="text-align:right;font-size:11.5px;color:#475569;line-height:1.5;">
+                <div><strong>Role Filter:</strong> {{ request('role') ? ucfirst(request('role')) : 'All Roles' }}</div>
+                <div><strong>Status Filter:</strong> {{ request('status') ? ucfirst(request('status')) : 'All Statuses' }}</div>
+                <div><strong>Date Generated:</strong> {{ now()->format('F d, Y h:i A') }}</div>
+            </div>
+        </div>
+    </div>
+
     <p class="um-sub">Manage user accounts, roles, status, and access permissions.</p>
 
     <div class="um-card">
         <div class="um-card-head">
             <span class="um-card-title">All Users</span>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div class="no-print" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <form method="GET" action="{{ route('admin.users') }}" class="um-search" style="display:flex;gap:8px;flex-wrap:wrap;">
                     <input type="text"
                            name="q"
@@ -369,7 +434,7 @@
             </div>
         </div>
 
-        <table class="um-table">
+        <table class="um-table" id="umUsersTable">
             <thead>
                 <tr>
                     <th>#</th>
@@ -379,7 +444,7 @@
                     <th>Program</th>
                     <th>Status</th>
                     <th>Joined</th>
-                    <th>Actions</th>
+                    <th class="no-print">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -419,7 +484,7 @@
                             <span class="um-badge {{ $statusClass }}">{{ ucfirst($user->status ?? 'pending') }}</span>
                         </td>
                         <td style="color:#999;">{{ $user->created_at?->format('d M Y') ?? '—' }}</td>
-                        <td>
+                        <td class="no-print">
                             <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <form method="POST" action="{{ route('admin.users.reset', $user->id) }}"
                                       onsubmit="return submitSimpleConfirm(this, 'Reset password for {{ addslashes($user->idnumber) }}?', 'Reset Password', 'warn')">
@@ -465,6 +530,25 @@
             </div>
         @endif
     </div>
+
+    {{-- Official PCC Printable Signature Block --}}
+    <div class="um-print-signatures">
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">{{ auth()->user()->name ?? 'System Administrator' }}</div>
+            <div style="font-size:11px;color:#64748b;">Prepared By &bull; System Administrator</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">MIS / IT Head</div>
+            <div style="font-size:11px;color:#64748b;">Reviewed &amp; Verified By</div>
+        </div>
+        <div style="text-align:center;">
+            <div style="border-bottom:1.5px solid #0f172a;height:36px;margin-bottom:6px;"></div>
+            <div style="font-weight:700;font-size:12px;color:#0f172a;text-transform:uppercase;">College Dean</div>
+            <div style="font-size:11px;color:#64748b;">Noted &amp; Approved By</div>
+        </div>
+    </div>
 </div>
 
 <div id="umConfirmOverlay" class="um-modal-overlay" aria-hidden="true">
@@ -481,6 +565,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script>
 var umPendingAction = null;
 
@@ -602,6 +687,92 @@ function submitStatusForm(form, idNumber, status) {
     });
 
     return false;
+}
+
+async function exportUsersToExcel() {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Reviso LMS - Pasig Catholic College';
+    wb.created = new Date();
+
+    let logoId = null;
+    try {
+        const resp = await fetch("{{ asset('assets/img/brand/pcc_logo.png') }}");
+        if (resp.ok) {
+            const buf = await resp.arrayBuffer();
+            logoId = wb.addImage({ buffer: buf, extension: 'png' });
+        }
+    } catch (e) {
+        console.warn('Could not load PCC logo for Excel export:', e);
+    }
+
+    const ws = wb.addWorksheet('User Roster');
+    ws.columns = [
+        { width: 10 },
+        { width: 18 },
+        { width: 28 },
+        { width: 16 },
+        { width: 20 },
+        { width: 16 },
+        { width: 18 },
+    ];
+
+    ws.mergeCells('A1:G1');
+    ws.mergeCells('A2:G2');
+    ws.mergeCells('A3:G3');
+
+    ws.getCell('A1').value = 'PASIG CATHOLIC COLLEGE — COLLEGE DEPARTMENT';
+    ws.getCell('A1').font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FF245E55' } };
+    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
+
+    ws.getCell('A2').value = 'Official Platform User Roster & Access Masterlist';
+    ws.getCell('A2').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+    ws.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
+
+    ws.getCell('A3').value = 'Generated on ' + new Date().toLocaleString();
+    ws.getCell('A3').font = { name: 'Calibri', size: 9.5, italic: true, color: { argb: 'FF64748B' } };
+    ws.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 7 };
+
+    ws.getRow(1).height = 20;
+    ws.getRow(2).height = 18;
+    ws.getRow(3).height = 18;
+
+    if (logoId !== null) {
+        ws.addImage(logoId, {
+            tl: { col: 0.08, row: 0.12 },
+            ext: { width: 50, height: 50 },
+            editAs: 'oneCell'
+        });
+    }
+
+    ws.addRow([]);
+    const headerRow = ws.addRow(['#', 'ID Number', 'Full Name', 'Role', 'Program', 'Status', 'Joined Date']);
+    headerRow.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245E55' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    });
+
+    const rows = document.querySelectorAll('#umUsersTable tbody tr');
+    rows.forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        if (tds.length >= 7) {
+            ws.addRow([
+                tds[0].innerText.trim(),
+                tds[1].innerText.trim(),
+                tds[2].innerText.trim(),
+                tds[3].innerText.trim(),
+                tds[4].innerText.replace('🔒', '').trim(),
+                tds[5].innerText.trim(),
+                tds[6].innerText.trim(),
+            ]);
+        }
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'PCC_User_Masterlist_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+    link.click();
 }
 </script>
 
