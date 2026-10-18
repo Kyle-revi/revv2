@@ -67,7 +67,7 @@ class PsychologyPresentationSeeder extends Seeder
         // 2. Ensure the 10 Student Accounts Exist (23-9991 to 23-9998, 23-10000, 23-10001)
         // ─────────────────────────────────────────────────────────────
         $studentDefs = [
-            ['idnumber' => '23-9991', 'name' => 'Juan Dela Cruz', 'email' => 'student9991@reviso.com'],
+            ['idnumber' => '23-9991', 'name' => 'Alden Richards', 'email' => 'student9991@reviso.com'],
             ['idnumber' => '23-9992', 'name' => 'Bea Alonzo', 'email' => 'student9992@reviso.com'],
             ['idnumber' => '23-9993', 'name' => 'Joshua Santos', 'email' => 'student9993@reviso.com'],
             ['idnumber' => '23-9994', 'name' => 'Katherine Bernardo', 'email' => 'student9994@reviso.com'],
@@ -88,7 +88,7 @@ class PsychologyPresentationSeeder extends Seeder
                     'email' => $sDef['email'],
                     'password' => $studentPassword,
                     'role' => 'student',
-                    'program' => 'psych',
+                    'program' => 'accountancy',
                     'status' => 'approved',
                     'email_verified_at' => now(),
                 ]

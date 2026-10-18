@@ -98,7 +98,6 @@ class BatchAnalyticsController extends Controller
 
                     if ($user->role === 'teacher') {
                         $totalProgramStudents = User::whereIn('id', $teacherStudentIds)
-                            ->where('program', 'LIKE', "%{$program}%")
                             ->where('role', 'student')
                             ->count();
                     } else {
@@ -144,7 +143,7 @@ class BatchAnalyticsController extends Controller
         }
         if ($user->role === 'teacher') {
             $totalProgramStudents = ! empty($selectedProgram)
-                ? User::whereIn('id', $teacherStudentIds)->where('role', 'student')->where('program', 'LIKE', "%{$selectedProgram}%")->count()
+                ? User::whereIn('id', $teacherStudentIds)->where('role', 'student')->count()
                 : 0;
         } else {
             $totalProgramStudents = ! empty($selectedProgram)

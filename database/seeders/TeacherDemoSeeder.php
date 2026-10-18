@@ -43,7 +43,7 @@ class TeacherDemoSeeder extends Seeder
             // ── Student Accounts (Accountancy, Psychology, Education) ──
             [
                 'idnumber' => '23-0101',
-                'name' => 'Juan Dela Cruz (Accountancy)',
+                'name' => 'Juan Dela Cruz',
                 'email' => 'student.acc@reviso.com',
                 'program' => 'accountancy',
                 'role' => 'student',
@@ -53,7 +53,7 @@ class TeacherDemoSeeder extends Seeder
             ],
             [
                 'idnumber' => '23-0102',
-                'name' => 'Maria Santos (Psychology)',
+                'name' => 'Maria Santos',
                 'email' => 'student.psych@reviso.com',
                 'program' => 'psych',
                 'role' => 'student',
@@ -63,7 +63,7 @@ class TeacherDemoSeeder extends Seeder
             ],
             [
                 'idnumber' => '23-0103',
-                'name' => 'Mark Reyes (Education)',
+                'name' => 'Mark Reyes',
                 'email' => 'student.educ@reviso.com',
                 'program' => 'educ',
                 'role' => 'student',
@@ -75,7 +75,7 @@ class TeacherDemoSeeder extends Seeder
             // ── Teacher Accounts ──
             [
                 'idnumber' => '23-0801',
-                'name' => 'Prof. Elena Ramos (Psychology)',
+                'name' => 'Prof. Elena Ramos',
                 'email' => 'teacher.psych@reviso.com',
                 'program' => 'psych',
                 'role' => 'teacher',
@@ -85,7 +85,7 @@ class TeacherDemoSeeder extends Seeder
             ],
             [
                 'idnumber' => '23-0802',
-                'name' => 'Prof. Carlos Santos (Education)',
+                'name' => 'Prof. Carlos Santos',
                 'email' => 'teacher.educ@reviso.com',
                 'program' => 'educ',
                 'role' => 'teacher',
@@ -95,7 +95,7 @@ class TeacherDemoSeeder extends Seeder
             ],
             [
                 'idnumber' => '23-0803',
-                'name' => 'Prof. Teresa Diaz (Accountancy)',
+                'name' => 'Prof. Teresa Diaz',
                 'email' => 'teacher.acc@reviso.com',
                 'program' => 'accountancy',
                 'role' => 'teacher',

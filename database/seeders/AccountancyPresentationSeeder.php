@@ -26,7 +26,6 @@ class AccountancyPresentationSeeder extends Seeder
     {
         DB::transaction(function () {
             $this->seedAccountancyData();
-            $this->call(PsychologyPresentationSeeder::class);
         });
     }
 
@@ -55,7 +54,7 @@ class AccountancyPresentationSeeder extends Seeder
         // 2. Create 10 Student Accounts (23-9991 to 23-9998, 23-10000, 23-10001)
         // ─────────────────────────────────────────────────────────────
         $studentDefs = [
-            ['idnumber' => '23-9991', 'name' => 'Juan Dela Cruz', 'email' => 'student9991@reviso.com'],
+            ['idnumber' => '23-9991', 'name' => 'Alden Richards', 'email' => 'student9991@reviso.com'],
             ['idnumber' => '23-9992', 'name' => 'Bea Alonzo', 'email' => 'student9992@reviso.com'],
             ['idnumber' => '23-9993', 'name' => 'Joshua Santos', 'email' => 'student9993@reviso.com'],
             ['idnumber' => '23-9994', 'name' => 'Katherine Bernardo', 'email' => 'student9994@reviso.com'],
@@ -1280,8 +1279,34 @@ class AccountancyPresentationSeeder extends Seeder
             );
         }
 
-        // 4. Populate Student Attempts (Remaining 9 classmates; 23-9991 answers manually)
+        // Clean up any legacy parenthetical suffixes on demo accounts (e.g. "Juan Dela Cruz (Accountancy)")
+        $demoCleanup = [
+            '23-0101' => ['name' => 'Juan Dela Cruz', 'program' => 'accountancy'],
+            '23-0102' => ['name' => 'Maria Santos', 'program' => 'psych'],
+            '23-0103' => ['name' => 'Mark Reyes', 'program' => 'educ'],
+            '23-0801' => ['name' => 'Prof. Elena Ramos', 'program' => 'psych'],
+            '23-0802' => ['name' => 'Prof. Carlos Santos', 'program' => 'educ'],
+            '23-0803' => ['name' => 'Prof. Teresa Diaz', 'program' => 'accountancy'],
+        ];
+        foreach ($demoCleanup as $demoId => $demoAttrs) {
+            User::where('idnumber', $demoId)->update($demoAttrs);
+        }
+
+        $juanStudent = User::where('idnumber', '23-0101')->first();
+        if ($juanStudent) {
+            $class->users()->syncWithoutDetaching([$juanStudent->id]);
+        }
+
+        // 4. Populate Student Attempts (All classmates including 23-9991 and 23-0101)
         $studentsConfig = [
+            '23-0101' => [
+                'pre_correct' => [0, 1, 2, 5, 6],
+                'post_correct' => [0, 1, 5],
+            ],
+            '23-9991' => [
+                'pre_correct' => [0, 1, 2, 3, 5, 6, 7],
+                'post_correct' => [0, 1, 2, 3, 5, 6, 7, 8],
+            ],
             '23-9992' => [
                 'pre_correct' => [0, 1, 2, 3, 5, 6, 7, 8],
                 'post_correct' => [0, 1, 2, 3, 4, 5, 6, 7, 8],

@@ -599,48 +599,53 @@ class MockBoardStatisticsService
         $mockBoard = MockBoard::findOrFail($mockBoardId);
         $passingScore = $mockBoard->passing_percentage ?? 75;
 
-        $programVariants = $this->resolveProgramVariants($program);
-
         // Ang forecast ay dapat batay sa Pre-Boards phase lang (mas malapit
         // ito sa totoong board exam kaysa sa Pre-Test), kaya i-filter dito.
         $allAttempts = MockBoardAttempt::where('mock_board_id', $mockBoardId)
             ->where('phase_type', 'pre_boards')
-            ->whereHas('user', function ($q) use ($programVariants) {
-                $q->whereIn('program', $programVariants);
-            })
-            ->with('user.classes') // Ensure we can see which class they belong to
+            ->with('user.classes')
             ->get();
 
+        // Deduplicate per student using their best pre_boards attempt
+        $bestPerUser = $allAttempts
+            ->groupBy('user_id')
+            ->map(fn ($userAttempts) => $userAttempts->sortByDesc('percentage')->first())
+            ->values();
+
         // 1. Group by Class ID
-        $groupedByClass = $allAttempts->groupBy(function ($attempt) {
-            return $attempt->user->classes->first()->id ?? 'unassigned';
+        $groupedByClass = $bestPerUser->groupBy(function ($attempt) {
+            return $attempt->user?->classes?->first()?->id ?? 'unassigned';
         });
 
         $classStats = [];
         foreach ($groupedByClass as $classId => $attempts) {
-            $className = $attempts->first()->user->classes->first()->name ?? 'Unassigned Students';
+            $className = $attempts->first()?->user?->classes?->first()?->name ?? 'Unassigned Students';
 
             $classStats[] = [
                 'class_id' => $classId,
                 'class_name' => $className,
                 'average_score' => round($attempts->avg('percentage'), 2),
                 'passing_rate' => $attempts->count() > 0
-                    ? round(($attempts->where('passed', true)->count() / $attempts->count()) * 100, 2)
+                    ? round(($attempts->filter(fn ($a) => $a->passed || $a->percentage >= $passingScore)->count() / $attempts->count()) * 100, 2)
                     : 0,
                 'student_count' => $attempts->unique('user_id')->count(),
             ];
         }
 
         // 2. Calculate Overall Batch Stats
-        $batchTotal = $allAttempts->count();
+        $batchTotal = $bestPerUser->count();
         $batchPassingRate = $batchTotal > 0
-            ? round(($allAttempts->where('passed', true)->count() / $batchTotal) * 100, 2)
+            ? round(($bestPerUser->filter(fn ($a) => $a->passed || $a->percentage >= $passingScore)->count() / $batchTotal) * 100, 2)
             : 0;
 
+        $totalParticipants = MockBoardAttempt::where('mock_board_id', $mockBoardId)
+            ->distinct('user_id')
+            ->count('user_id');
+
         return [
-            'batch_average' => $allAttempts->isNotEmpty() ? round($allAttempts->avg('percentage'), 2) : 0,
+            'batch_average' => $bestPerUser->isNotEmpty() ? round($bestPerUser->avg('percentage'), 2) : 0,
             'batch_passing_rate' => $batchPassingRate,
-            'total_batch_students' => $allAttempts->unique('user_id')->count(),
+            'total_batch_students' => max($batchTotal, $totalParticipants),
             'classes' => $classStats,
         ];
     }
@@ -663,7 +668,10 @@ class MockBoardStatisticsService
             $attempts = $mockBoard->attempts()
                 ->whereIn('user_id', $studentIds)
                 ->where('phase_type', 'pre_boards')
-                ->get();
+                ->get()
+                ->groupBy('user_id')
+                ->map(fn ($ua) => $ua->sortByDesc('percentage')->first())
+                ->values();
 
             $studentCount = $attempts->count();
             $passedCount = $attempts->where('passed', true)->count();
@@ -750,10 +758,12 @@ class MockBoardStatisticsService
                 ?? $preTest?->created_at?->format('M d, Y')
                 ?? 'Pending';
 
+            $cleanName = preg_replace('/\s*\((Accountancy|Psychology|Education|BSA|Psych|Educ)\)\s*$/i', '', $user->name ?? '');
+
             $studentResults[] = [
                 'user_id' => $user->id,
-                'name' => $user->name,
-                'program' => ucfirst($user->program ?? $program),
+                'name' => $cleanName ?: $user->name,
+                'program' => ucfirst($mockBoard->program ?: ($user->program ?? $program)),
                 'class_name' => $user->classes->first()?->name ?? 'N/A',
                 'pre_test_score' => $preTestScore,
                 'pre_test_passed' => $preTest ? (bool) $preTest->passed : false,
@@ -771,13 +781,7 @@ class MockBoardStatisticsService
 
     public function calculateBatchANOVA(MockBoard $mockBoard, string $program)
     {
-        $programVariants = $this->resolveProgramVariants($program);
-
         $attempts = $mockBoard->attempts()
-            ->whereHas('user', function ($q) use ($program, $programVariants) {
-                $q->whereIn('program', $programVariants)
-                    ->orWhereRaw('LOWER(program) = ?', [strtolower($program)]);
-            })
             ->get()
             ->groupBy('user_id');
 
@@ -786,7 +790,8 @@ class MockBoardStatisticsService
 
         foreach ($attempts as $userAttempts) {
             $preTest = $userAttempts->firstWhere('phase_type', 'pre_test');
-            $preBoards = $userAttempts->firstWhere('phase_type', 'pre_boards');
+            $preBoards = $userAttempts->where('phase_type', 'pre_boards')->sortByDesc('percentage')->first()
+                ?? $userAttempts->firstWhere('phase_type', 'pre_boards');
 
             if ($preTest && $preTest->percentage !== null) {
                 $preTestScores[] = $preTest->percentage;

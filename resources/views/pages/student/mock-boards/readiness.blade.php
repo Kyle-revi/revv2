@@ -12,6 +12,7 @@
         'educ' => 'Bachelor of Secondary Education',
     ];
     $programFormatted = $progMap[strtolower($user->program ?? $mockBoard->program ?? '')] ?? strtoupper($user->program ?? $mockBoard->program ?? 'N/A');
+    $cleanStudentName = preg_replace('/\s*\((Accountancy|Psychology|Education|BSA|Psych|Educ)\)\s*$/i', '', $user->name ?? '') ?: $user->name;
 
     $summary = [
         'readiness_percentage' => (float) $report->readiness_percentage,
@@ -71,7 +72,7 @@
             </div>
             <div style="text-align:right; font-size:11px; color:#334155; white-space:nowrap; line-height:1.45; flex-shrink:0;">
                 <p style="margin:0;"><strong>Report Date:</strong> {{ $report->generated_at?->format('F d, Y h:i A') ?? now()->format('F d, Y h:i A') }}</p>
-                <p style="margin:2px 0 0 0;"><strong>Student Name:</strong> {{ $user->name }}</p>
+                <p style="margin:2px 0 0 0;"><strong>Student Name:</strong> {{ $cleanStudentName }}</p>
                 <p style="margin:2px 0 0 0;"><strong>Student ID:</strong> {{ $user->idnumber ?? '—' }}</p>
                 <p style="margin:2px 0 0 0;"><strong>Program:</strong> {{ $programFormatted }}</p>
                 <p style="margin:2px 0 0 0;"><strong>Mock Board:</strong> {{ $mockBoard->title }}</p>
@@ -85,7 +86,7 @@
             <div class="report-badge">Diagnostic Licensure Readiness</div>
             <h1 class="report-title">{{ $mockBoard->title }}</h1>
             <p class="report-subtitle">
-                <span><i class="fas fa-user-graduate"></i> {{ $user->name }}</span>
+                <span><i class="fas fa-user-graduate"></i> {{ $cleanStudentName }}</span>
                 <span><i class="fas fa-graduation-cap"></i> {{ strtoupper($user->program ?? $mockBoard->program ?? 'N/A') }}</span>
                 <span><i class="fas fa-calendar-check"></i> Generated: {{ $report->generated_at?->format('M d, Y h:i A') ?? now()->format('M d, Y') }}</span>
             </p>
@@ -1400,7 +1401,7 @@
 <script>
     const pccLogoUrl = @json(asset('assets/img/brand/pcc_logo.png'));
     const readinessExportData = {
-        studentName: @json($user->name),
+        studentName: @json($cleanStudentName),
         studentId: @json($user->idnumber ?? '—'),
         studentProgram: @json($programFormatted),
         boardTitle: @json($mockBoard->title),
@@ -1453,34 +1454,32 @@
                     console.warn('Could not load logo image for Excel embed:', e);
                 }
 
-                function addSheetHeader(ws, subTitle, maxColLetter = 'D', colAWidth = 36) {
+                function addSheetHeader(ws, subTitle, maxColLetter = 'D') {
                     ws.getRow(1).height = 24;
                     ws.getRow(2).height = 18;
                     ws.getRow(3).height = 20;
 
                     if (imageId !== null) {
-                        // Dynamically anchor image in Column A right before Column B.
-                        // In Excel, 1 column width unit is ~7.5px. A 48px image is ~6.4 units wide.
-                        // Leaving ~1.8 units (~13.5px) buffer before Column B brings the logo neatly
-                        // beside "PASIG CATHOLIC COLLEGE" without excessive empty space or overlap.
-                        const cFrac = Math.max(0.06, (colAWidth - 8.2) / colAWidth);
                         ws.addImage(imageId, {
-                            tl: { col: cFrac, row: 0.15 },
-                            ext: { width: 48, height: 48 }
+                            tl: { col: 0.08, row: 0.12 },
+                            ext: { width: 50, height: 50 }
                         });
                     }
 
-                    ws.getCell('B1').value = 'PASIG CATHOLIC COLLEGE';
-                    ws.getCell('B1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
-                    ws.mergeCells('B1:' + maxColLetter + '1');
+                    ws.getCell('A1').value = 'PASIG CATHOLIC COLLEGE';
+                    ws.getCell('A1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
+                    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                    ws.mergeCells('A1:' + maxColLetter + '1');
 
-                    ws.getCell('B2').value = 'College Department • Licensure Examination Preparation & Diagnostic Center';
-                    ws.getCell('B2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
-                    ws.mergeCells('B2:' + maxColLetter + '2');
+                    ws.getCell('A2').value = 'College Department • Licensure Examination Preparation & Diagnostic Center';
+                    ws.getCell('A2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+                    ws.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                    ws.mergeCells('A2:' + maxColLetter + '2');
 
-                    ws.getCell('B3').value = subTitle;
-                    ws.getCell('B3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF245E55' } };
-                    ws.mergeCells('B3:' + maxColLetter + '3');
+                    ws.getCell('A3').value = subTitle;
+                    ws.getCell('A3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF245E55' } };
+                    ws.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                    ws.mergeCells('A3:' + maxColLetter + '3');
                 }
 
                 function styleTableHeader(row, bgColor = 'FF245E55') {

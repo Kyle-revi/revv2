@@ -2380,24 +2380,26 @@ async function exportPerformanceToExcel(type) {
             wsStudents.getRow(3).height = 20;
 
             if (imageId !== null) {
-                const cFrac = Math.max(0.06, (13 - 8.2) / 13);
                 wsStudents.addImage(imageId, {
-                    tl: { col: cFrac, row: 0.15 },
-                    ext: { width: 48, height: 48 }
+                    tl: { col: 0.08, row: 0.12 },
+                    ext: { width: 50, height: 50 }
                 });
             }
 
-            wsStudents.getCell('B1').value = 'PASIG CATHOLIC COLLEGE';
-            wsStudents.getCell('B1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
-            wsStudents.mergeCells('B1:G1');
+            wsStudents.getCell('A1').value = 'PASIG CATHOLIC COLLEGE';
+            wsStudents.getCell('A1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
+            wsStudents.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+            wsStudents.mergeCells('A1:G1');
 
-            wsStudents.getCell('B2').value = 'College Department • Academic Evaluation & Assessment Report';
-            wsStudents.getCell('B2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
-            wsStudents.mergeCells('B2:G2');
+            wsStudents.getCell('A2').value = 'College Department • Academic Evaluation & Assessment Report';
+            wsStudents.getCell('A2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+            wsStudents.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+            wsStudents.mergeCells('A2:G2');
 
-            wsStudents.getCell('B3').value = 'CLASS PERFORMANCE & STUDENT RANKING MASTERLIST';
-            wsStudents.getCell('B3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
-            wsStudents.mergeCells('B3:G3');
+            wsStudents.getCell('A3').value = 'CLASS PERFORMANCE & STUDENT RANKING MASTERLIST';
+            wsStudents.getCell('A3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+            wsStudents.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+            wsStudents.mergeCells('A3:G3');
 
             const sMeta = [
                 ['Class:', className],
@@ -2482,24 +2484,26 @@ async function exportPerformanceToExcel(type) {
                 wsQ.getRow(3).height = 20;
 
                 if (imageId !== null) {
-                    const cFrac = Math.max(0.06, (13 - 8.2) / 13);
                     wsQ.addImage(imageId, {
-                        tl: { col: cFrac, row: 0.15 },
-                        ext: { width: 48, height: 48 }
+                        tl: { col: 0.08, row: 0.12 },
+                        ext: { width: 50, height: 50 }
                     });
                 }
 
-                wsQ.getCell('B1').value = 'PASIG CATHOLIC COLLEGE';
-                wsQ.getCell('B1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
-                wsQ.mergeCells('B1:F1');
+                wsQ.getCell('A1').value = 'PASIG CATHOLIC COLLEGE';
+                wsQ.getCell('A1').font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF0F172A' } };
+                wsQ.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                wsQ.mergeCells('A1:F1');
 
-                wsQ.getCell('B2').value = 'College Department • Center for Teaching & Learning Assessment';
-                wsQ.getCell('B2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
-                wsQ.mergeCells('B2:F2');
+                wsQ.getCell('A2').value = 'College Department • Center for Teaching & Learning Assessment';
+                wsQ.getCell('A2').font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+                wsQ.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                wsQ.mergeCells('A2:F2');
 
-                wsQ.getCell('B3').value = 'ITEM ANALYSIS (QUESTION BREAKDOWN)';
-                wsQ.getCell('B3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
-                wsQ.mergeCells('B3:F3');
+                wsQ.getCell('A3').value = 'ITEM ANALYSIS (QUESTION BREAKDOWN)';
+                wsQ.getCell('A3').font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+                wsQ.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left', indent: 4 };
+                wsQ.mergeCells('A3:F3');
 
                 const qMeta = [
                     ['Class:', className],
